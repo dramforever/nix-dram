@@ -1,0 +1,162 @@
+diff --git a/src/nix/installables.cc b/src/nix/installables.cc
+index 4e6bf4a9a..ab672f8be 100644
+--- a/src/nix/installables.cc
++++ b/src/nix/installables.cc
+@@ -20,6 +20,10 @@
+ 
+ namespace nix {
+ 
++const static std::regex attrPathRegex(
++    "(?:[a-zA-Z0-9-_][a-zA-Z0-9-._]*)",
++    std::regex::ECMAScript);
++
+ nlohmann::json BuildableOpaque::toJSON(ref<Store> store) const {
+     nlohmann::json res;
+     res["path"] = store->printStorePath(path);
+@@ -215,10 +219,19 @@ void completeFlakeRefWithFragment(
+     /* Look for flake output attributes that match the
+        prefix. */
+     try {
++        bool isAttrPath = std::regex_match(prefix.begin(), prefix.end(), attrPathRegex);
+         auto hash = prefix.find('#');
+-        if (hash != std::string::npos) {
+-            auto fragment = prefix.substr(hash + 1);
+-            auto flakeRefS = std::string(prefix.substr(0, hash));
++        if (isAttrPath || hash != std::string::npos) {
++            auto fragment =
++                isAttrPath
++                ? prefix
++                : prefix.substr(hash + 1);
++
++            auto flakeRefS =
++                isAttrPath
++                ? std::string("flake:default")
++                : std::string(prefix.substr(0, hash));
++
+             // FIXME: do tilde expansion.
+             auto flakeRef = parseFlakeRef(flakeRefS, absPath("."));
+ 
+@@ -251,7 +264,10 @@ void completeFlakeRefWithFragment(
+                         auto attrPath2 = attr->getAttrPath(attr2);
+                         /* Strip the attrpath prefix. */
+                         attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
+-                        completions->add(flakeRefS + "#" + concatStringsSep(".", attrPath2));
++                        if (isAttrPath)
++                            completions->add(concatStringsSep(".", attrPath2));
++                        else
++                            completions->add(flakeRefS + "#" + concatStringsSep(".", attrPath2));
+                     }
+                 }
+             }
+@@ -626,7 +642,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+             std::exception_ptr ex;
+ 
+             try {
+-                auto [flakeRef, fragment] = parseFlakeRefWithFragment(s, absPath("."));
++                bool isAttrPath = std::regex_match(s, attrPathRegex);
++
++                auto [flakeRef, fragment] =
++                    isAttrPath
++                    ? std::make_pair(parseFlakeRef("flake:default", absPath(".")), s)
++                    : parseFlakeRefWithFragment(s, absPath("."));
++
+                 result.push_back(std::make_shared<InstallableFlake>(
+                         getEvalState(), std::move(flakeRef),
+                         fragment == "" ? getDefaultFlakeAttrPaths() : Strings{fragment},
+diff --git a/src/nix/search.cc b/src/nix/search.cc
+index 9f864b3a4..b21118ece 100644
+--- a/src/nix/search.cc
++++ b/src/nix/search.cc
+@@ -30,13 +30,32 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
+           + std::string(m.suffix());
+ }
+ 
+-struct CmdSearch : InstallableCommand, MixJSON
++struct CmdSearch : SourceExprCommand, MixJSON
+ {
++    std::string _installable{"flake:default"};
+     std::vector<std::string> res;
+ 
+     CmdSearch()
+     {
+-        expectArgs("regex", &res);
++        bool hasInstallable = false;
++
++        addFlag({
++            .longName = "installable",
++            .shortName = 'i',
++            .description = "Search within this installable",
++            .labels = {"installable"},
++            .handler = {[this, &hasInstallable](std::string ss) {
++                hasInstallable = true;
++                _installable = ss;
++            }},
++            .completer = completePath
++        });
++
++        if (hasInstallable && (file || expr)) {
++            throw UsageError("'--installable' cannot be used together with '--file' or '--expr'");
++        }
++
++        expectArgs("args", &res);
+     }
+ 
+     std::string description() override
+@@ -63,6 +82,8 @@ struct CmdSearch : InstallableCommand, MixJSON
+     {
+         settings.readOnlyMode = true;
+ 
++        auto installable = parseInstallable(store, (file || expr) ? "" : _installable);
++
+         // Empty search string should match all packages
+         // Use "^" here instead of ".*" due to differences in resulting highlighting
+         // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
+diff --git a/tests/flakes.sh b/tests/flakes.sh
+index 2b7bcdd68..f654b2f36 100644
+--- a/tests/flakes.sh
++++ b/tests/flakes.sh
+@@ -188,7 +188,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+ [[ -e $TEST_ROOT/result/hello ]]
+ 
+ # Test defaultPackage.
+-nix build -o $TEST_ROOT/result flake1
++nix build -o $TEST_ROOT/result flake1#
+ [[ -e $TEST_ROOT/result/hello ]]
+ 
+ nix build -o $TEST_ROOT/result $flake1Dir
+diff --git a/tests/search.sh b/tests/search.sh
+index ee3261687..e41963c2d 100644
+--- a/tests/search.sh
++++ b/tests/search.sh
+@@ -3,23 +3,23 @@ source common.sh
+ clearStore
+ clearCache
+ 
+-(( $(nix search -f search.nix '' hello | wc -l) > 0 ))
++(( $(nix search -f search.nix hello | wc -l) > 0 ))
+ 
+ # Check descriptions are searched
+-(( $(nix search -f search.nix '' broken | wc -l) > 0 ))
++(( $(nix search -f search.nix broken | wc -l) > 0 ))
+ 
+ # Check search that matches nothing
+-(( $(nix search -f search.nix '' nosuchpackageexists | wc -l) == 0 ))
++(( $(nix search -f search.nix nosuchpackageexists | wc -l) == 0 ))
+ 
+ # Search for multiple arguments
+-(( $(nix search -f search.nix '' hello empty | wc -l) == 2 ))
++(( $(nix search -f search.nix hello empty | wc -l) == 2 ))
+ 
+ # Multiple arguments will not exist
+-(( $(nix search -f search.nix '' hello broken | wc -l) == 0 ))
++(( $(nix search -f search.nix hello broken | wc -l) == 0 ))
+ 
+ ## Search expressions
+ 
+ # Check that empty search string matches all
+-nix search -f search.nix '' |grep -q foo
+-nix search -f search.nix '' |grep -q bar
+-nix search -f search.nix '' |grep -q hello
++nix search -f search.nix |grep -q foo
++nix search -f search.nix |grep -q bar
++nix search -f search.nix |grep -q hello

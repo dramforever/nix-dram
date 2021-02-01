@@ -1,0 +1,24 @@
+diff --git a/src/nix/search.cc b/src/nix/search.cc
+index b21118ece..5e9c310a9 100644
+--- a/src/nix/search.cc
++++ b/src/nix/search.cc
+@@ -9,6 +9,7 @@
+ #include "shared.hh"
+ #include "eval-cache.hh"
+ #include "attr-path.hh"
++#include "value-to-json.hh"
+ 
+ #include <regex>
+ #include <fstream>
+@@ -151,6 +152,11 @@ struct CmdSearch : SourceExprCommand, MixJSON
+                             jsonElem.attr("pname", name.name);
+                             jsonElem.attr("version", name.version);
+                             jsonElem.attr("description", description);
++
++                            auto jsonMeta = jsonElem.placeholder("meta");
++
++                            PathSet context;
++                            printValueAsJSON(*state, true, aMeta->forceValue(), jsonMeta, context);
+                         } else {
+                             auto name2 = hilite(name.name, nameMatch, "\e[0;2m");
+                             if (results > 1) logger->cout("");
