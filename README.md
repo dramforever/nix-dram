@@ -45,15 +45,13 @@ See the issue? The Flakes version of Nix does not have an idea of a 'default'
 flake of any sort. At all. The best you can do is rename `nixpkgs` to `n`, but
 still it frankly sucks.
 
-This is in fact a conscious design choice in the implementation. I tried making
-[a feature request][the-feature-request] but got immmediately shut down, with an
-explanation that `flake:nixpkgs` should not be prioritized as a 'default'. I
-guess `flake:default` it is? In any case, it seems that the main author is open
-to improvements, but is not *that* keen on the idea.
+Introducing `nix-dram`. Now there's no `nixpkgs` in sight. (You do need to add a
+`default` Flake to your registry though.)
 
-[the-feature-request]: https://github.com/NixOS/nix/issues/4438
-
-The basic idea of `nix-dram` is based on a different prediction of how Flakes
+```console
+$ nix run hello
+$ nix search hello
+```
 
 ## What's new?
 
@@ -185,6 +183,34 @@ colorized search output (Recorded using [termtosvg]):
 [termtosvg]: https://github.com/nbedos/termtosvg
 
 ![Demonstration of `nix-search-pretty`](images/nix-search-demo.svg)
+
+## More on the design
+
+In the NixOS version of `nixFlakes`, it is in fact a conscious design choice
+that you have to type `nixpkgs` every time. I tried making [a feature
+request][the-feature-request] but got immmediately shut down, with an
+explanation that `flake:nixpkgs` should not be prioritized as a 'default'. I
+guess `flake:default` it is? In any case, it seems that the main author is open
+to improvements, but is not *that* keen on the idea.
+
+[the-feature-request]: https://github.com/NixOS/nix/issues/4438
+
+The basic idea of `nix-dram` is based on a slightly different prediction of how
+Flakes will be used. Namely, it is predicted that users will create their own
+personal Flake, referencing other Flakes as inputs. It will possibly provide a
+package set for use in `nix` commands, various `nixosConfigurations`, and so on.
+
+'Smaller' Flakes will exists and possibly even in great numbers, but each user
+will have their own 'favorite' Flake to be used for most purposes. In `nix-dram`
+that flake will be assigned `flake:default`. This indeed seems to be the use
+case with popular demonstration repositories such as [nixflk] showing this
+approach. Will this be how we use Flakes in the future? We will have to wait.
+
+[nixflk]: https://github.com/nrdxp/nixflk
+
+This project is called `nix-dram` with the specific intention that it will
+*never* be official. This is just one person, me, trying out one point in the
+design space. That's how free software works, isn't it?
 
 ---
 
