@@ -5,16 +5,28 @@
 module Main where
 
 import           Data.Aeson
+import           Data.Aeson.Parser
 import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Lazy as H
 import           Data.HashMap.Lazy ((!), (!?))
 import           Data.Maybe
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import           Prettyprinter
 import           Prettyprinter.Render.Terminal
 import           Prettyprinter.Util
 import           System.IO
+
+newtype OneOrArray a = OneOrArray (V.Vector a)
+    deriving (Show)
+
+instance FromJSON1 OneOrArray where
+    liftParseJSON go _ (Array arr) = OneOrArray <$> traverse go arr
+    liftParseJSON go _ val = OneOrArray . V.singleton <$> go val
+
+instance FromJSON a => FromJSON (OneOrArray a) where
+    parseJSON = liftParseJSON parseJSON parseJSONList
 
 data PackageMeta =
     PackageMeta
@@ -26,11 +38,11 @@ data PackageMeta =
 
     , meta_position :: Maybe T.Text
 
-    , meta_homepage :: Maybe (T.Text)
+    , meta_homepage :: Maybe (OneOrArray T.Text)
     }
     deriving (Show)
 
-$(deriveJSON
+$(deriveFromJSON
     defaultOptions { fieldLabelModifier = drop 5 }
     ''PackageMeta)
 
@@ -43,7 +55,7 @@ data Package =
     }
     deriving (Show)
 
-$(deriveJSON
+$(deriveFromJSON
     defaultOptions { fieldLabelModifier = drop 4 }
     ''Package)
 
@@ -75,9 +87,9 @@ prettyPackage attr Package{..} =
         fillItem = fill 11
 
         homepage = case meta_homepage of
-            Just url ->
+            Just (OneOrArray urls) ->
                 fillItem (annotate bold "Homepage" <> ":")
-                <+> annotate underlined (pretty meta_homepage)
+                <+> annotate underlined (align . vsep $ pretty <$> V.toList urls)
             Nothing -> mempty
 
         defPos =
