@@ -17,5 +17,5 @@ executable nix-search-pretty
     , text >= 1.2.4.1
     , unordered-containers >= 0.2.13.0
     , bytestring >= 0.10.12.0
-    , vector >= 0.12.2.0
+    , vector >= 0.12.1.2
   default-language: Haskell2010
