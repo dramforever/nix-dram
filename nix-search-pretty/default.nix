@@ -1,5 +1,5 @@
 { mkDerivation, aeson, base, bytestring, lib, prettyprinter
-, prettyprinter-ansi-terminal, text, unordered-containers
+, prettyprinter-ansi-terminal, text, unordered-containers, vector
 }:
 mkDerivation {
   pname = "nix-search-pretty";
@@ -9,7 +9,7 @@ mkDerivation {
   isExecutable = true;
   executableHaskellDepends = [
     aeson base bytestring prettyprinter prettyprinter-ansi-terminal
-    text unordered-containers
+    text unordered-containers vector
   ];
   license = lib.licenses.bsd3;
 }
