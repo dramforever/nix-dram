@@ -18,4 +18,4 @@ jobs:
           experimental-features = nix-command flakes
 
     - run: echo "experimental-features = nix-command flakes" | sudo tee -a /etc/nix/nix.conf
-    - run: nix flake check
+    - run: nix flake check -vL
