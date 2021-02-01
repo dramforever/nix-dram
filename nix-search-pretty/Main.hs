@@ -28,6 +28,17 @@ instance FromJSON1 OneOrArray where
 instance FromJSON a => FromJSON (OneOrArray a) where
     parseJSON = liftParseJSON parseJSON parseJSONList
 
+data PackageLicense =
+    PackageLicense
+    { lic_fullName :: T.Text
+    , lic_spdxId :: Maybe T.Text
+    }
+    deriving (Show)
+
+$(deriveFromJSON
+    defaultOptions { fieldLabelModifier = drop 4 }
+    ''PackageLicense)
+
 data PackageMeta =
     PackageMeta
     { meta_available :: Maybe Bool
@@ -39,6 +50,7 @@ data PackageMeta =
     , meta_position :: Maybe T.Text
 
     , meta_homepage :: Maybe (OneOrArray T.Text)
+    , meta_license :: Maybe (OneOrArray PackageLicense)
     }
     deriving (Show)
 
@@ -69,6 +81,7 @@ prettyPackage attr Package{..} =
     , ""
     , indent 2 $ metaFlags
     , indent 2 $ homepage
+    , indent 2 $ license
     , indent 2 $ defPos
     , ""
     ]
@@ -90,7 +103,19 @@ prettyPackage attr Package{..} =
             Just (OneOrArray urls) ->
                 fillItem (annotate bold "Homepage" <> ":")
                 <+> annotate underlined (align . vsep $ pretty <$> V.toList urls)
-            Nothing -> mempty
+            Nothing -> annotate (colorDull White) "(No homepage)"
+
+        license = case meta_license of
+            Just (OneOrArray licenses) ->
+                fillItem (annotate bold "License" <> ":")
+                <+> (align . vsep $ prettyLicense <$> V.toList licenses)
+            Nothing -> annotate (colorDull White) "(No license)"
+
+        prettyLicense PackageLicense{..} = pretty lic_fullName <> spdxPart
+            where
+                spdxPart = case lic_spdxId of
+                    Just spdx -> space <> (annotate bold $ parens (pretty spdx))
+                    Nothing -> mempty
 
         defPos =
             fillItem (annotate bold "Defined at" <> ":")
