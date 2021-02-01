@@ -45,13 +45,15 @@ See the issue? The Flakes version of Nix does not have an idea of a 'default'
 flake of any sort. At all. The best you can do is rename `nixpkgs` to `n`, but
 still it frankly sucks.
 
-Introducing `nix-dram`. Now there's no `nixpkgs` in sight. (You do need to add a
-`default` Flake to your registry though.)
+Introducing `nix-dram`:
 
 ```console
 $ nix run hello
 $ nix search hello
 ```
+
+ Now there's no `nixpkgs` in sight. (You do need to add a `default` Flake to
+your registry though.)
 
 ## What's new?
 
@@ -87,7 +89,7 @@ additional rule when parsing:
 - Otherwise it is treated as a Flake `INSTALLABLE` as before.
 
 `flake:default` is an [indirect Flake reference to the registry][docs-indirect].
-`flake:default` can be set using `nix-registry` to refer to a personal flake
+`flake:default` can be set using `nix registry` to refer to a personal flake
 containing outputs such as packages or NixOS configurations. It is not
 necessarily (but can be) the same as `flake:nixpkgs`. To avoid unnecessarily
 prioritizing Nixpkgs, `flake:nixpkgs` is not used.
@@ -97,8 +99,8 @@ Command line completion of the new `INSTALLABLE` syntax *is* supported.
 [docs-indirect]: https://nixos.org/manual/nix/unstable/command-ref/new-cli/nix3-flake.html#types
 
 (In cases where a Flake URL is expected (such as the arguments of
-`--override-flake`), the behavior is not changed, i.e. `nixpkgs` still means
-`--override-flake flake:nixpkgs [...]` .)
+`--override-flake`), the behavior is not changed, i.e. using `nixpkgs` there
+still means `--override-flake flake:nixpkgs [...]` .)
 
 The following table shows the incompatibilities. The 'Legacy
 compatibility' columns shows a syntax to use that both `nix-dram` and
@@ -139,7 +141,7 @@ It now has this syntax:
 $ nix search [options] [KEYWORD]
 ```
 
-With the `INSTALLABLE` argument moved into an option:
+With the `INSTALLABLE` argument moved into an option, defaulting to `flake:default`:
 
 ```plain
   -i, --installable INSTALLABLE     Search within this installable
@@ -150,6 +152,7 @@ The following table shows a comparison of the syntax.
 | `nix-dram` | `nixFlakes` |
 |---|---|
 | `nix search hello` | `nix search default hello` |
+| `nix search -i github:NixOS/nixpkgs hello` | `nix search github:NixOS/nixpkgs hello` |
 | `nix search --expr foo hello` | `nix search --expr foo '' hello` |
 | `nix search --file foo hello` | `nix search --file foo '' hello` |
 
