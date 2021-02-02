@@ -24,12 +24,15 @@
           overlays = [ self.overlay ];
         };
         in {
-          inherit (pkgs) nix-search-pretty nix-dram;
+          inherit (pkgs) nix-search-pretty nix-nar-listing nix-dram;
         };
     }) // {
       overlay = final: prev: {
         nix-search-pretty =
           final.haskellPackages.callPackage ./nix-search-pretty {};
+
+        nix-nar-listing =
+          final.haskellPackages.callPackage ./nix-nar-listing {};
 
         nix-dram = final.nixUnstable.overrideAttrs (old: {
           name = "nix-dram-" + old.version;

@@ -1,0 +1,40 @@
+cabal-version:       2.2
+name:                nix-nar-listing
+version:             0.1.0.0
+license:             BSD-3-Clause
+author:              dramforever
+maintainer:          dramforever@live.com
+
+common common
+  default-extensions:
+    OverloadedStrings
+    RecordWildCards
+  ghc-options:
+    -Wall
+  default-language:    Haskell2010
+
+library
+  import: common
+  exposed-modules:
+    Nix.Nar.Listing.Pretty
+    Nix.Nar.Listing.Types
+    Nix.Nar.Listing.Utils
+  build-depends:
+      base ^>= 4.14.1.0
+    , aeson
+    , bytestring
+    , prettyprinter
+    , text
+    , unordered-containers
+    , prettyprinter-ansi-terminal
+  hs-source-dirs:      src
+
+executable nix-nar-listings
+  import: common
+  main-is:             Main.hs
+  build-depends:
+      base ^>= 4.14.1.0
+    , nix-nar-listing
+    , bytestring
+    , text
+  hs-source-dirs:      app
