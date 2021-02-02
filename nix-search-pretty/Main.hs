@@ -4,6 +4,7 @@
 
 module Main where
 
+import           Control.Monad (when)
 import           Data.Aeson
 import           Data.Aeson.Parser
 import           Data.Aeson.TH
@@ -16,6 +17,7 @@ import qualified Data.Vector as V
 import           Prettyprinter
 import           Prettyprinter.Render.Terminal
 import           Prettyprinter.Util
+import           System.Environment
 import           System.IO
 
 newtype OneOrArray a = OneOrArray (V.Vector a)
@@ -142,6 +144,12 @@ prettyPackage attr Package{..} =
 
 main :: IO ()
 main = do
+    isTTY <- hIsTerminalDevice stdin
+    progName <- getProgName
+    when isTTY
+        (hPutStrLn stderr $
+            progName ++ ": Warning: Awaiting input from stdin on terminal...")
+
     inp <- L.getContents
     case eitherDecode inp of
         Left err -> hPutDoc stderr . vsep $
