@@ -4,6 +4,7 @@
 
 module Main where
 
+import           Control.Applicative
 import           Control.Monad (when)
 import           Data.Aeson
 import           Data.Aeson.Parser
@@ -30,15 +31,20 @@ instance FromJSON1 OneOrArray where
 instance FromJSON a => FromJSON (OneOrArray a) where
     parseJSON = liftParseJSON parseJSON parseJSONList
 
-data PackageLicense =
-    PackageLicense
-    { lic_fullName :: T.Text
-    , lic_spdxId :: Maybe T.Text
-    }
+data PackageLicense
+    = PackageLicense
+        { lic_fullName :: Maybe T.Text
+        , lic_spdxId :: Maybe T.Text
+        , lic_url :: Maybe T.Text
+        }
+    | PackageLicenseString T.Text
     deriving (Show)
 
 $(deriveFromJSON
-    defaultOptions { fieldLabelModifier = drop 4 }
+    defaultOptions
+        { fieldLabelModifier = drop 4
+        , sumEncoding = UntaggedValue
+        }
     ''PackageLicense)
 
 data PackageMeta =
@@ -113,11 +119,15 @@ prettyPackage attr Package{..} =
                 <+> (align . vsep $ prettyLicense <$> V.toList licenses)
             Nothing -> annotate (colorDull White) "(No license)"
 
-        prettyLicense PackageLicense{..} = pretty lic_fullName <> spdxPart
+        prettyLicense PackageLicense{..} = namePart <> spdxPart
             where
+                namePart = fromMaybe "Unknown" $
+                    (pretty <$> lic_fullName)
+                    <|> (annotate underlined . pretty <$> lic_url)
                 spdxPart = case lic_spdxId of
                     Just spdx -> space <> (annotate bold $ parens (pretty spdx))
                     Nothing -> mempty
+        prettyLicense (PackageLicenseString name) = pretty name
 
         defPos =
             fillItem (annotate bold "Defined at" <> ":")
