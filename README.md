@@ -215,6 +215,84 @@ This project is called `nix-dram` with the specific intention that it will
 *never* be official. This is just one person, me, trying out one point in the
 design space. That's how free software works, isn't it?
 
+## Why is this not a script or a few shell functions?
+
+(Reference: <https://www.reddit.com/r/NixOS/comments/lbqsfg/_/glvs8zw?context=1>)
+
+### `INSTALLABLE`
+
+`nix-dram` handles everything where an `INSTALLABLE` is expected, so other
+commands will also work, like `nix run`, `nix eval`, `nix develop`, `nix edit`.
+(Yes I do use these all the time.) Even more obscure ones like and `nix copy`,
+`nix bundle` also work.
+
+If you put a wrapper around `nix`, that's more subcommands I'd feel comfortable
+implementing, honestly. On the other hand, if you do the C++ work, to modify
+`INSTALLABLE` handling, there's just one function you need to touch:
+
+```diff
+@@ -20,6 +20,10 @@
+
+ namespace nix {
+
++const static std::regex attrPathRegex(
++    "(?:[a-zA-Z0-9-_][a-zA-Z0-9-._]*)",
++    std::regex::ECMAScript);
++
+@@ -626,7 +642,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+-                auto [flakeRef, fragment] = parseFlakeRefWithFragment(s, absPath("."));
++                bool isAttrPath = std::regex_match(s, attrPathRegex);
++
++                auto [flakeRef, fragment] =
++                    isAttrPath
++                    ? std::make_pair(parseFlakeRef("flake:default", absPath(".")), s)
++                    : parseFlakeRefWithFragment(s, absPath("."));
++
+```
+
+Another thing is compatibility with the old syntax. It is possible to be allow
+for both 'implicit flake' and 'explicit flake' `INSTALLABLE` to work together as
+described in ['Changes to `INSTALLABLE`'](#changes-to-installable), but it is
+going to be much more handling.
+
+A script would need to look at *each* `INSTALLABLE` argument and translate those
+that need translating. Figuring out which arguments are `INSTALLABLE` is
+actually the hardest part. A wrapper would need to either understand all the
+options or require something like a `--` marker, otherwise it could accidentally
+change `--override-flake foo bar` into `--override-flake flake:default#foo
+flake:default#bar`.
+
+### Completion
+
+`nix-dram` also handles command line completion, so if you type `nix search
+wires` and press tab, you get `wireshark`. Not having to type `nixpkgs#wires`
+makes it much smoother. Conceivably you can write your completion handlers as
+well, but that's honestly way too much for me.
+
+That's because `nix` the program itself handles command line completion. You
+need to to translate completion requests/responses (Yes, responses as well if
+you don't want `wires` completing to `flake:default#wireshark`). You may even
+need to call `nix` *twice* to generate completion for both the registry and
+attributes. It seems *much* more work than just patching whatever generates the
+completion. And the problem of handling options also occurs here.
+
+### Are you sure this is the best way?
+
+I like how much I get from the moderate amount of patching I did. The
+main drawback I find is that I need to spend quite a bit of time building
+`nix-dram`. I honestly think it's worth it.
+
+### But what if...
+
+If you think `nix-dram` is too much, you can write your own little scripts.
+`nix-dram` might just not be what you need.
+
+If you like specifying the flake all the time, then by all means just use the
+usual Nix CLI.
+
+If you have any idea on how what `nix-dram` does could be done in a more
+lightweight way, I'm happy to take suggestions.
+
 ---
 
 ## Contents of this flake
