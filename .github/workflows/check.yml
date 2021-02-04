@@ -19,9 +19,9 @@ jobs:
         cache-name: cache-nix-store
       with:
         path: ~/binary-cache
-        key: binary-cache-v1-${{ github.sha }}
+        key: binary-cache-v2-${{ github.sha }}
         restore-keys: |
-          binary-cache-v1-
+          binary-cache-v2-
 
     - uses: cachix/install-nix-action@v12
       with:
@@ -40,4 +40,4 @@ jobs:
     - run: nix flake check -vL
     - run: nix flake archive
 
-    - run: nix copy --to file://$HOME/binary-cache --all
+    - run: nix copy --to file://$HOME/binary-cache?compression=none --all
