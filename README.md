@@ -156,7 +156,7 @@ The following table shows a comparison of the syntax.
 | `nix search --expr foo hello` | `nix search --expr foo '' hello` |
 | `nix search --file foo hello` | `nix search --file foo '' hello` |
 
-### `nix-search-pretty`
+### `nix-search` and `nix-search-pretty`
 
 The `nix search` command, when given the `--json` option, now dumps the `meta`
 attribute of each search result into a JSON property called `meta`.
@@ -181,7 +181,8 @@ attribute of each search result into a JSON property called `meta`.
 ```
 
 `nix-search-pretty` is an example program that takes in this JSON and produces
-colorized search output (Recorded using [termtosvg]):
+colorized search output. `nix-search` is thin wrapper around the two. (Recorded
+using [termtosvg]):
 
 [termtosvg]: https://github.com/nbedos/termtosvg
 
@@ -304,18 +305,22 @@ github:dramforever/nix-dram/[...]
 │   ├───aarch64-linux
 │   │   ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
 │   │   ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
+│   │   ├───nix-search: derivation 'nix-search'
 │   │   └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
 │   ├───i686-linux
 │   │   ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
 │   │   ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
+│   │   ├───nix-search: derivation 'nix-search'
 │   │   └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
 │   ├───x86_64-darwin
 │   │   ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
 │   │   ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
+│   │   ├───nix-search: derivation 'nix-search'
 │   │   └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
 │   └───x86_64-linux
 │       ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
 │       ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
+│       ├───nix-search: derivation 'nix-search'
 │       └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
 ├───defaultApp
 │   ├───aarch64-linux: app
@@ -332,17 +337,21 @@ github:dramforever/nix-dram/[...]
     ├───aarch64-linux
     │   ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
     │   ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
+    │   ├───nix-search: package 'nix-search'
     │   └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
     ├───i686-linux
     │   ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
     │   ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
+    │   ├───nix-search: package 'nix-search'
     │   └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
     ├───x86_64-darwin
     │   ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
     │   ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
+    │   ├───nix-search: package 'nix-search'
     │   └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
     └───x86_64-linux
         ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
         ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
+        ├───nix-search: package 'nix-search'
         └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
 ```

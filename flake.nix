@@ -24,7 +24,10 @@
           overlays = [ self.overlay ];
         };
         in {
-          inherit (pkgs) nix-search-pretty nix-nar-listing nix-dram;
+          inherit (pkgs)
+            nix-dram
+            nix-search nix-search-pretty
+            nix-nar-listing;
         };
     }) // {
       overlay = final: prev: {
@@ -41,6 +44,10 @@
             ./nix-patches/nix-search-meta.patch
           ];
         });
+
+        nix-search = final.writeShellScriptBin "nix-search" ''
+          ${final.nix-dram}/bin/nix search --json "$@" | ${final.nix-search-pretty}/bin/nix-search-pretty
+        '';
       };
     };
 }
