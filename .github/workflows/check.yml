@@ -40,4 +40,4 @@ jobs:
     - run: nix flake check -vL
     - run: nix flake archive
 
-    - run: nix copy --to file://$HOME/binary-cache?compression=none --all
+    - run: nix copy -v --to file://$HOME/binary-cache?compression=none --all
