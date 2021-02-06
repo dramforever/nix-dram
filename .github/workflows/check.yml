@@ -21,6 +21,9 @@ jobs:
         path: |
           /nix/store
           /nix/var/nix/db/db.sqlite
+          !/nix/store/*.drv
+          !/nix/store/*.check
+          !/nix/store/*.lock
         key: binary-cache-v5
 
     - uses: cachix/install-nix-action@v12
