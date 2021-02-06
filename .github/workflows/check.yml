@@ -20,7 +20,7 @@ jobs:
       with:
         path: |
           /nix/store
-          /nix/var/nix/db
+          /nix/var/nix/db/db.sqlite
         key: binary-cache-v5
 
     - uses: cachix/install-nix-action@v12
