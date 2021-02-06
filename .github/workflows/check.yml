@@ -18,9 +18,7 @@ jobs:
       env:
         cache-name: cache-nix-store
       with:
-        path:
-          - /nix/store
-          - /nix/var/nix/db
+        path: [ "/nix/store", "/nix/var/nix/db" ]
         key: binary-cache-v5
 
     - uses: cachix/install-nix-action@v12
