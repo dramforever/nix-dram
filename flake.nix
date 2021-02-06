@@ -38,6 +38,8 @@
             nix-dram nix-dram-progress
             nix-search nix-search-pretty
             nix-nar-listing;
+
+          nix-dram-static = pkgs.pkgsStatic.nix-dram;
         };
     }) // {
       overlay = final: prev: {
