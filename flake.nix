@@ -14,10 +14,20 @@
       checks = packages;
       defaultPackage = packages.nix-dram;
 
-      defaultApp = {
-        type = "app";
-        program = "${packages.nix-dram}/bin/nix";
+      defaultApp = apps.nix-dram;
+
+      apps = {
+        nix-dram = {
+          type = "app";
+          program = "${packages.nix-dram}/bin/nix";
+        };
+
+        nix-dram-progress = {
+          type = "app";
+          program = "${packages.nix-dram-progress}/bin/nix";
+        };
       };
+
       packages =
         let pkgs = import nixpkgs {
           inherit system;
@@ -25,7 +35,7 @@
         };
         in {
           inherit (pkgs)
-            nix-dram
+            nix-dram nix-dram-progress
             nix-search nix-search-pretty
             nix-nar-listing;
         };
@@ -42,6 +52,24 @@
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
+          ];
+        });
+
+        nix-dram-progress = final.nixUnstable.overrideAttrs (old: {
+          name = "nix-dram-" + old.version;
+          patches = (old.patches or []) ++ [
+            ./nix-patches/nix-flake-default.patch
+            ./nix-patches/nix-search-meta.patch
+            (final.fetchpatch {
+              name = "add-notice-level.diff";
+              url = "https://github.com/NixOS/nix/commit/a8f533b66417a1025a468cae3068bd2f5c06e811.patch";
+              sha256 = "sha256-1LR6Vdxx0isClossrURuoNAGilISRfLoegGRJ7lJn2w=";
+            })
+            (final.fetchpatch {
+              name = "nix-progress.diff";
+              url = "https://github.com/NixOS/nix/compare/480426a...1af0a16.diff";
+              sha256 = "sha256-vR7kGQMLHcf2qnaycyrv8h9M5iZjIC+GxD9kfqM3lzQ=";
+            })
           ];
         });
 
