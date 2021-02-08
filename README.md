@@ -27,21 +27,6 @@ $ cachix use dram
 
 Check out [the contents of this flake](#contents-of-this-flake)
 
-## Usage without Nix Flake
-
-You can either use [flake-compat], or just clone this repository and use
-`overlay.nix`. For example, using `fetchGit`, this expression returns the
-overlay function:
-
-[flake-compat]: https://github.com/edolstra/flake-compat
-
-```nix
-import (fetchGit {
-  url = "https://github.com/dramforever/nix-dram.git";
-  ref = "main";
-} + "/overlay.nix")
-```
-
 ---
 
 ## What is this about?
