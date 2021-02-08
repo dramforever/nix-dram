@@ -38,6 +38,7 @@ overlay function:
 ```nix
 import (fetchGit {
   url = "https://github.com/dramforever/nix-dram.git";
+  ref = "main";
 } + "/overlay.nix")
 ```
 
