@@ -84,7 +84,7 @@ additional rule when parsing:
 
   'Looks like an attribute path' is
   defined as fully matching the regular expression
-  `[a-zA-Z0-9-_][a-zA-Z0-9-._]*`.
+  `[a-zA-Z0-9_"-][a-zA-Z0-9_".-]`
 
 - Otherwise it is treated as a Flake `INSTALLABLE` as before.
 

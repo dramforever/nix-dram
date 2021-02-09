@@ -7,7 +7,7 @@ index 4e6bf4a9a..ab672f8be 100644
  namespace nix {
  
 +const static std::regex attrPathRegex(
-+    "(?:[a-zA-Z0-9-_][a-zA-Z0-9-._]*)",
++    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*))",
 +    std::regex::ECMAScript);
 +
  nlohmann::json BuildableOpaque::toJSON(ref<Store> store) const {
