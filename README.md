@@ -19,13 +19,13 @@ $ nix run github:dramforever/nix-dram -- --version
 nix (Nix) 2.4pre20201205_a5d85d0
 ```
 
-Binaries of this flake is available on Cachix. Set it up with:
+The binary cache of this flake is available on Cachix. Set it up with:
 
 ```console
 $ cachix use dram
 ```
 
-Check out [the contents of this flake](#contents-of-this-flake)
+Check out [a list of the contents of this flake](#contents-of-this-flake).
 
 ---
 
@@ -133,7 +133,7 @@ even improves readability (though arguably so).
 
 ### Changes to `nix search`
 
-The `nix search` commandS used to have this syntax:
+The `nix search` command used to have this syntax:
 
 ```console
 $ nix search [options] INSTALLABLE [KEYWORD]
@@ -151,7 +151,8 @@ With the `INSTALLABLE` argument moved into an option, defaulting to `flake:defau
   -i, --installable INSTALLABLE     Search within this installable
 ```
 
-The following table shows a comparison of the syntax.
+The following table shows a comparison of use cases, the first of which is
+predicted to be the most common.
 
 | `nix-dram` | `nixFlakes` |
 |---|---|
@@ -192,9 +193,12 @@ using [termtosvg]):
 
 ![Demonstration of `nix-search-pretty`](images/nix-search-demo.svg)
 
+`nix-search` is a wrapper around `nix-search-pretty` with similar usage to `nix
+search`.
+
 ## More on the design
 
-In the NixOS version of `nixFlakes`, it is in fact a conscious design choice
+In the usual version of `nixFlakes`, it is in fact a conscious design choice
 that you have to type `nixpkgs` every time. I tried making [a feature
 request][the-feature-request] but got immmediately shut down, with an
 explanation that `flake:nixpkgs` should not be prioritized as a 'default'. I
@@ -212,7 +216,8 @@ package set for use in `nix` commands, various `nixosConfigurations`, and so on.
 will have their own 'favorite' Flake to be used for most purposes. In `nix-dram`
 that flake will be assigned `flake:default`. This indeed seems to be the use
 case with popular demonstration repositories such as [nixflk] showing this
-approach. Will this be how we use Flakes in the future? We will have to wait.
+approach. Will this be how we use Flakes in the future? We will have to wait and
+see.
 
 [nixflk]: https://github.com/nrdxp/nixflk
 
@@ -231,7 +236,7 @@ commands will also work, like `nix run`, `nix eval`, `nix develop`, `nix edit`.
 (Yes I do use these all the time.) Even more obscure ones like and `nix copy`,
 `nix bundle` also work.
 
-If you put a wrapper around `nix`, that's more subcommands I'd feel comfortable
+A wrapper around `nix` would mean more subcommands I'd feel comfortable
 implementing, honestly. On the other hand, if you do the C++ work, to modify
 `INSTALLABLE` handling, there's just one function you need to touch:
 
@@ -255,10 +260,11 @@ implementing, honestly. On the other hand, if you do the C++ work, to modify
 +
 ```
 
-Another thing is compatibility with the old syntax. It is possible to be allow
-for both 'implicit flake' and 'explicit flake' `INSTALLABLE` to work together as
-described in ['Changes to `INSTALLABLE`'](#changes-to-installable), but it is
-going to be much more handling.
+Another thing is compatibility with the old syntax. In the case of a wrapper, it
+could be possible to be allow for both 'implicit flake' and 'explicit flake'
+`INSTALLABLE` to work together as described in ['Changes to
+`INSTALLABLE`'](#changes-to-installable), but it is going to be much more
+handling.
 
 A script would need to look at *each* `INSTALLABLE` argument and translate those
 that need translating. Figuring out which arguments are `INSTALLABLE` is
@@ -267,19 +273,20 @@ options or require something like a `--` marker, otherwise it could accidentally
 change `--override-flake foo bar` into `--override-flake flake:default#foo
 flake:default#bar`.
 
-### Completion
+### Command line completion
 
 `nix-dram` also handles command line completion, so if you type `nix search
 wires` and press tab, you get `wireshark`. Not having to type `nixpkgs#wires`
 makes it much smoother. Conceivably you can write your completion handlers as
 well, but that's honestly way too much for me.
 
-That's because `nix` the program itself handles command line completion. You
-need to to translate completion requests/responses (Yes, responses as well if
-you don't want `wires` completing to `flake:default#wireshark`). You may even
-need to call `nix` *twice* to generate completion for both the registry and
-attributes. It seems *much* more work than just patching whatever generates the
-completion. And the problem of handling options also occurs here.
+That's because `nix` the program itself handles command line completion. If you
+write a wrapper, you need to to translate completion requests/responses (Yes,
+responses as well if you don't want `wires` completing to
+`flake:default#wireshark`). You may even need to call `nix` *twice* to generate
+completion for both the registry and attributes. It seems *much* more work than
+just patching whatever generates the completion. And the problem of handling
+options also occurs here.
 
 ### Are you sure this is the best way?
 
@@ -293,7 +300,7 @@ If you think `nix-dram` is too much, you can write your own little scripts.
 `nix-dram` might just not be what you need.
 
 If you like specifying the flake all the time, then by all means just use the
-usual Nix CLI.
+usual Nix Flakes CLI.
 
 If you have any idea on how what `nix-dram` does could be done in a more
 lightweight way, I'm happy to take suggestions.
