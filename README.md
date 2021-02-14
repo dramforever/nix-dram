@@ -70,7 +70,8 @@ There are two patches over Nix in this repository:
   This is mainly used to support `nix-search-pretty` so that it has more
   information to work with, but could support other tooling as well.
 
-These changes are *incompatible* but is predicted to minimally affect
+These changes are *incompatible* but is predicted to minimally affect current
+usage. See below for details.
 
 The documentation has *not* yet been changed to reflect the changes.
 
@@ -110,6 +111,9 @@ compatibility' columns shows a syntax to use that both `nix-dram` and
 |---|---|---|---|
 | `blender` | `flake:default#blender` | `flake:blender` | `blender#` |
 | `xorg.xclock` | `flake:default#xorg.xclock` | `./xorg.xclock/` (directory) | `./xorg.xclock` or `xorg.xclock/` |
+
+One notable example is that if you want to refer to the `result` symlink from a
+build output, you will need to specify `./result` or `result/`.
 
 Here are examples of `INSTALLABLE` syntax that is unaffected:
 
