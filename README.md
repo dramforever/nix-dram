@@ -31,6 +31,8 @@ Check out [a list of the contents of this flake](#contents-of-this-flake).
 
 ## What is this about?
 
+The main reason of this fork is as follows
+
 As a [Nix Flakes][nix-flakes] user, I was constantly typing `nixpkgs` over and
 over again in commands like:
 
@@ -52,12 +54,16 @@ $ nix run hello
 $ nix search hello
 ```
 
- Now there's no `nixpkgs` in sight. (You do need to add a `default` Flake to
+Now there's no `nixpkgs` in sight. (You do need to add a `default` Flake to
 your registry though.)
+
+Well that's the first thing anyway. It turns out that there were several things
+I really want to change about Nix, so what I did is just to dump them here. A
+detailed explanation follows.
 
 ## What's new?
 
-There are two patches over Nix in this repository:
+There are three patches over Nix in this repository:
 
 - `nix-flake-default.patch`: This changes the Nix CLI so that it parses
   `INSTALLABLE` arguments differently. The usage of the command `nix search` was
@@ -69,6 +75,11 @@ There are two patches over Nix in this repository:
 
   This is mainly used to support `nix-search-pretty` so that it has more
   information to work with, but could support other tooling as well.
+
+- `nix-flake-http-redirect.patch`: This arose from a thought on how we could
+  keep using the good old channels in Nix Flakes. A quick thought is to just
+  make Nix follow the redirect and save the final redirect target in
+  `flake.lock`. This is an implementation of that idea.
 
 These changes are *incompatible* but is predicted to minimally affect current
 usage. See below for details.
@@ -195,6 +206,57 @@ using [termtosvg]):
 
 `nix-search` is a wrapper around `nix-search-pretty` with similar usage to `nix
 search`.
+
+### Locked HTTP redirects in Flake inputs
+
+(Refer to [a post on Discourse][http-redir] for discussion.)
+
+[http-redir]: https://discourse.nixos.org/t/future-of-channels-and-channels-nixos-org-in-a-flakes-world/11563
+
+How could we refer to good old channels in a Flake URL? Here's a possible way
+that I thought of:
+
+1. When a user specifies an `http`/`https` URL, and it leads to (possibly
+   several) redirects, we instead record the *final redirection destination* in
+   `flake.lock`.
+2. When a `flake.lock` is consulted to download the tarball, the URL in
+   `flake.lock` is used.
+
+This way specifying:
+
+```nix
+inputs.nixpkgs.url = "https://nixos.org/channels/nixos-unstable/nixexprs.tar.xz";
+```
+
+Would actually just work, as instead of failing with an invalid hash whenever
+`nixos-unstable` updates, it saves the redirected URL which points to a stable
+version. `flake.nix` would look something like this:
+
+```jsonc
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "narHash": "sha256-N1qI50AkeTSBp1ffUCHrcK2re52wrn6euFFGGvFa2iw=",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable/nixos-21.05pre269929.ff96a0fa563/nixexprs.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://nixos.org/channels/nixos-unstable/nixexprs.tar.xz"
+      }
+    },
+    // ...
+}
+```
+
+This way, older versions of Nix seeing this new lock file would just behave as
+if someone used `--override-input`, and newer versions of Nix seeing the old
+lock file with the pre-redirection URL would simply migrate it over when `nix
+flake update --update-input` is used.
+
+A major concern would be whether this redirection is actually part of the
+intended interface of channels.nixos.org.
 
 ## More on the design
 
