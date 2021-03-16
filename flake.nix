@@ -52,7 +52,6 @@
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
-            ./nix-patches/nix-flake-http-redirect.patch
           ];
         });
 
@@ -61,7 +60,6 @@
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
-            ./nix-patches/nix-flake-http-redirect.patch
             (final.fetchpatch {
               name = "add-notice-level.diff";
               url = "https://github.com/NixOS/nix/commit/a8f533b66417a1025a468cae3068bd2f5c06e811.patch";

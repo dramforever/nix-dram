@@ -209,6 +209,8 @@ search`.
 
 ### Locked HTTP redirects in Flake inputs
 
+(**Update**: This is already merged into Nix, as PR [#4595](https://github.com/NixOS/nix/pull/4595))
+
 (Refer to [a post on Discourse][http-redir] for discussion.)
 
 [http-redir]: https://discourse.nixos.org/t/future-of-channels-and-channels-nixos-org-in-a-flakes-world/11563
