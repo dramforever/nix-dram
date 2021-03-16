@@ -1,7 +1,7 @@
-diff --git a/src/nix/libcmd/installables.cc b/src/nix/installables.cc
+diff --git a/src/libcmd/installables.cc b/src/nix/installables.cc
 index 4e6bf4a9a..ab672f8be 100644
---- a/src/nix/libcmd/installables.cc
-+++ b/src/nix/libcmd/installables.cc
+--- a/src/libcmd/installables.cc
++++ b/src/libcmd/installables.cc
 @@ -20,6 +20,10 @@
  
  namespace nix {
