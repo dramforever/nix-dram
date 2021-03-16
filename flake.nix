@@ -61,11 +61,6 @@
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
             (final.fetchpatch {
-              name = "add-notice-level.diff";
-              url = "https://github.com/NixOS/nix/commit/a8f533b66417a1025a468cae3068bd2f5c06e811.patch";
-              sha256 = "sha256-1LR6Vdxx0isClossrURuoNAGilISRfLoegGRJ7lJn2w=";
-            })
-            (final.fetchpatch {
               name = "nix-progress.diff";
               url = "https://github.com/NixOS/nix/compare/480426a...1af0a16.diff";
               sha256 = "sha256-vR7kGQMLHcf2qnaycyrv8h9M5iZjIC+GxD9kfqM3lzQ=";
