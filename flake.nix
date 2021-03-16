@@ -11,7 +11,14 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: rec {
-      checks = packages;
+      checks = {
+        inherit (packages)
+          # nix-dram-progress # broken
+          nix-dram
+          nix-search nix-search-pretty
+          nix-nar-listing;
+      };
+
       defaultPackage = packages.nix-dram;
 
       defaultApp = apps.nix-dram;
