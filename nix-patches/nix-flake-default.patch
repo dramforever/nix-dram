@@ -48,6 +48,15 @@ index 4e6bf4a9a..ab672f8be 100644
                      }
                  }
              }
+@@ -310,7 +310,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+             if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
+                 std::string from2(from, 6);
+                 if (hasPrefix(from2, prefix))
+-                    completions->add(from2);
++                    completions->add(from2 + "#");
+             } else {
+                 if (hasPrefix(from, prefix))
+                     completions->add(from);
 @@ -626,7 +642,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              std::exception_ptr ex;
  
