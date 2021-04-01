@@ -76,10 +76,15 @@ There are three patches over Nix in this repository:
   This is mainly used to support `nix-search-pretty` so that it has more
   information to work with, but could support other tooling as well.
 
+There is a patch that was removed:
+
 - `nix-flake-http-redirect.patch`: This arose from a thought on how we could
   keep using the good old channels in Nix Flakes. A quick thought is to just
   make Nix follow the redirect and save the final redirect target in
   `flake.lock`. This is an implementation of that idea.
+
+  This was removed because it was already merged into Nix as pull request
+  [#4595](https://github.com/NixOS/nix/pull/4595). See details below.
 
 These changes are *incompatible* but is predicted to minimally affect current
 usage. See below for details.
@@ -209,7 +214,12 @@ search`.
 
 ### Locked HTTP redirects in Flake inputs
 
-(**Update**: This is already merged into Nix, as PR [#4595](https://github.com/NixOS/nix/pull/4595))
+(**Update**: This is already merged into Nix, as PR
+[#4595](https://github.com/NixOS/nix/pull/4595))
+
+(An issue was discovered with this approach, namely
+[#4672](https://github.com/NixOS/nix/issues/4672), so this might end up getting
+reverted. Either case, this patch no longer belongs in nix-dram.)
 
 (Refer to [a post on Discourse][http-redir] for discussion.)
 
