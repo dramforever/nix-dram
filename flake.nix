@@ -5,7 +5,7 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   nixConfig = {
-    substituters = [ "https://dram.cachix.org" ];
+    extra-substituters = [ "https://dram.cachix.org" ];
     trusted-public-keys = [ "dram.cachix.org-1:baoy1SXpwYdKbqdTbfKGTKauDDeDlHhUpC+QuuILEMY=" ];
   };
 
