@@ -6,7 +6,7 @@
 
   nixConfig = {
     extra-substituters = [ "https://dram.cachix.org" ];
-    trusted-public-keys = [ "dram.cachix.org-1:baoy1SXpwYdKbqdTbfKGTKauDDeDlHhUpC+QuuILEMY=" ];
+    extra-trusted-public-keys = [ "dram.cachix.org-1:baoy1SXpwYdKbqdTbfKGTKauDDeDlHhUpC+QuuILEMY=" ];
   };
 
   outputs = { self, nixpkgs, flake-utils }:
