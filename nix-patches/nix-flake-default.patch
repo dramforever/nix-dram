@@ -10,9 +10,9 @@ index 4e6bf4a9a..ab672f8be 100644
 +    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*))",
 +    std::regex::ECMAScript);
 +
- nlohmann::json BuildableOpaque::toJSON(ref<Store> store) const {
-     nlohmann::json res;
-     res["path"] = store->printStorePath(path);
+ void completeFlakeInputPath(
+     ref<EvalState> evalState,
+     const FlakeRef & flakeRef,
 @@ -215,10 +219,19 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
