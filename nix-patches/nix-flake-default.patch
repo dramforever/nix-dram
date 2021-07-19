@@ -112,10 +112,10 @@ index 298fd48f8..e1c70b5f4 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c52a48d4e..d381babf9 100644
+index c52a48d4e..3a765f57a 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -30,13 +30,36 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
+@@ -30,13 +30,32 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
            + std::string(m.suffix());
  }
  
@@ -146,16 +146,18 @@ index c52a48d4e..d381babf9 100644
 +            throw UsageError("'--installable' cannot be used together with '--file' or '--expr'");
 +        }
 +
-+        if (! hasInstallable && _installable == "" && ! file && ! expr) {
-+            throw UsageError("nothing to search from, set 'default-flake' option or specify one of '--installable', '--file', '--expr'");
-+        }
-+
 +        expectArgs("args", &res);
      }
  
      std::string description() override
-@@ -63,6 +86,8 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -61,8 +80,14 @@ struct CmdSearch : InstallableCommand, MixJSON
+ 
+     void run(ref<Store> store) override
      {
++        if (_installable == "" && ! file && ! expr) {
++            throw UsageError("nothing to search from, set 'default-flake' option or specify one of '--installable', '--file', '--expr'");
++        }
++
          settings.readOnlyMode = true;
  
 +        auto installable = parseInstallable(store, (file || expr) ? "" : _installable);
