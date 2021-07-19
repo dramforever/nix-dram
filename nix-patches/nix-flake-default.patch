@@ -1,26 +1,21 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 658b415f3..090ba3034 100644
+index 658b415f3..496632ba2 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -20,6 +20,28 @@
+@@ -20,6 +20,23 @@
  
  namespace nix {
  
-+struct InstallablesSettings : Config
++std::string InstallablesSettings::getDefaultFlake(std::string_view url)
 +{
-+    Setting<std::string> defaultFlake{this, "", "default-flake",
-+        "The default flake URL when using the command line interface"};
-+
-+    std::string getDefaultFlake(std::string_view url) {
-+        std::string res = defaultFlake;
-+        if (res == "") {
-+            throw Error("don't know how to handle installable '%s' without flake URL, because the option default-flake is not set", url);
-+        }
-+        return res;
++    std::string res = defaultFlake;
++    if (res == "") {
++        throw UsageError("don't know how to handle installable '%s' without flake URL, because the option 'default-flake' is not set", url);
 +    }
-+};
++    return res;
++}
 +
-+static InstallablesSettings installablesSettings;
++InstallablesSettings installablesSettings;
 +
 +static GlobalConfig::Register rInstallablesSettings(&installablesSettings);
 +
@@ -31,7 +26,7 @@ index 658b415f3..090ba3034 100644
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -227,12 +249,23 @@ void completeFlakeRefWithFragment(
+@@ -227,12 +244,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -59,7 +54,7 @@ index 658b415f3..090ba3034 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -263,7 +296,10 @@ void completeFlakeRefWithFragment(
+@@ -263,7 +291,10 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = attr->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -71,7 +66,7 @@ index 658b415f3..090ba3034 100644
                      }
                  }
              }
-@@ -312,7 +348,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -312,7 +343,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -80,7 +75,7 @@ index 658b415f3..090ba3034 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -662,7 +698,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -662,7 +693,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              std::exception_ptr ex;
  
              try {
@@ -95,18 +90,39 @@ index 658b415f3..090ba3034 100644
                  result.push_back(std::make_shared<InstallableFlake>(
                          this,
                          getEvalState(),
+diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
+index 298fd48f8..e1c70b5f4 100644
+--- a/src/libcmd/installables.hh
++++ b/src/libcmd/installables.hh
+@@ -11,6 +11,16 @@
+ 
+ namespace nix {
+ 
++struct InstallablesSettings : Config
++{
++    Setting<std::string> defaultFlake{this, "", "default-flake",
++        "The default flake URL when using the command line interface"};
++
++    std::string getDefaultFlake(std::string_view url);
++};
++
++extern InstallablesSettings installablesSettings;
++
+ struct DrvInfo;
+ struct SourceExprCommand;
+ 
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c52a48d4e..59f166f15 100644
+index c52a48d4e..d381babf9 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -30,13 +30,32 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
+@@ -30,13 +30,36 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
            + std::string(m.suffix());
  }
  
 -struct CmdSearch : InstallableCommand, MixJSON
 +struct CmdSearch : SourceExprCommand, MixJSON
  {
-+    std::string _installable{"flake:default"};
++    std::string _installable{installablesSettings.defaultFlake};
      std::vector<std::string> res;
  
      CmdSearch()
@@ -130,11 +146,15 @@ index c52a48d4e..59f166f15 100644
 +            throw UsageError("'--installable' cannot be used together with '--file' or '--expr'");
 +        }
 +
++        if (! hasInstallable && _installable == "" && ! file && ! expr) {
++            throw UsageError("nothing to search from, set 'default-flake' option or specify one of '--installable', '--file', '--expr'");
++        }
++
 +        expectArgs("args", &res);
      }
  
      std::string description() override
-@@ -63,6 +82,8 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -63,6 +86,8 @@ struct CmdSearch : InstallableCommand, MixJSON
      {
          settings.readOnlyMode = true;
  
