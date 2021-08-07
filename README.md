@@ -54,8 +54,8 @@ $ nix run hello
 $ nix search hello
 ```
 
-Now there's no `nixpkgs` in sight. (You do need to add a `default` Flake to
-your registry though.)
+Now there's no `nixpkgs` in sight. (You do need to add a `default-flake` option
+to your Nix config though.)
 
 Well that's the first thing anyway. It turns out that there were several things
 I really want to change about Nix, so what I did is just to dump them here. A
