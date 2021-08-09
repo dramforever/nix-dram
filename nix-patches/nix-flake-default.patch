@@ -1,11 +1,24 @@
-diff --git a/src/libcmd/installables.cc b/src/nix/installables.cc
-index 4e6bf4a9a..ab672f8be 100644
+diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
+index 658b415f3..496632ba2 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -20,6 +20,10 @@
+@@ -20,6 +20,23 @@
  
  namespace nix {
  
++std::string InstallablesSettings::getDefaultFlake(std::string_view url)
++{
++    std::string res = defaultFlake;
++    if (res == "") {
++        throw UsageError("don't know how to handle installable '%s' without flake URL, because the option 'default-flake' is not set", url);
++    }
++    return res;
++}
++
++InstallablesSettings installablesSettings;
++
++static GlobalConfig::Register rInstallablesSettings(&installablesSettings);
++
 +const static std::regex attrPathRegex(
 +    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*))",
 +    std::regex::ECMAScript);
@@ -13,7 +26,7 @@ index 4e6bf4a9a..ab672f8be 100644
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -215,10 +219,19 @@ void completeFlakeRefWithFragment(
+@@ -227,12 +244,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -30,13 +43,18 @@ index 4e6bf4a9a..ab672f8be 100644
 +
 +            auto flakeRefS =
 +                isAttrPath
-+                ? std::string("flake:default")
++                ? std::string(installablesSettings.getDefaultFlake(prefix))
 +                : std::string(prefix.substr(0, hash));
 +
              // FIXME: do tilde expansion.
-             auto flakeRef = parseFlakeRef(flakeRefS, absPath("."));
+-            auto flakeRef = parseFlakeRef(flakeRefS, absPath("."));
++            auto flakeRef = parseFlakeRef(
++                flakeRefS,
++                isAttrPath ? std::optional<std::string>{} : absPath("."));
  
-@@ -251,7 +264,10 @@ void completeFlakeRefWithFragment(
+             auto evalCache = openEvalCache(*evalState,
+                 std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
+@@ -263,7 +291,10 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = attr->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -48,7 +66,7 @@ index 4e6bf4a9a..ab672f8be 100644
                      }
                  }
              }
-@@ -310,7 +310,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -312,7 +343,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -57,7 +75,7 @@ index 4e6bf4a9a..ab672f8be 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -626,7 +642,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -662,7 +693,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              std::exception_ptr ex;
  
              try {
@@ -66,14 +84,35 @@ index 4e6bf4a9a..ab672f8be 100644
 +
 +                auto [flakeRef, fragment] =
 +                    isAttrPath
-+                    ? std::make_pair(parseFlakeRef("flake:default", absPath(".")), s)
++                    ? std::make_pair(parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), s)
 +                    : parseFlakeRefWithFragment(s, absPath("."));
 +
                  result.push_back(std::make_shared<InstallableFlake>(
-                         getEvalState(), std::move(flakeRef),
-                         fragment == "" ? getDefaultFlakeAttrPaths() : Strings{fragment},
+                         this,
+                         getEvalState(),
+diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
+index 298fd48f8..e1c70b5f4 100644
+--- a/src/libcmd/installables.hh
++++ b/src/libcmd/installables.hh
+@@ -11,6 +11,16 @@
+ 
+ namespace nix {
+ 
++struct InstallablesSettings : Config
++{
++    Setting<std::string> defaultFlake{this, "", "default-flake",
++        "The default flake URL when using the command line interface"};
++
++    std::string getDefaultFlake(std::string_view url);
++};
++
++extern InstallablesSettings installablesSettings;
++
+ struct DrvInfo;
+ struct SourceExprCommand;
+ 
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 9f864b3a4..b21118ece 100644
+index c52a48d4e..3a765f57a 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -30,13 +30,32 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
@@ -83,7 +122,7 @@ index 9f864b3a4..b21118ece 100644
 -struct CmdSearch : InstallableCommand, MixJSON
 +struct CmdSearch : SourceExprCommand, MixJSON
  {
-+    std::string _installable{"flake:default"};
++    std::string _installable{installablesSettings.defaultFlake};
      std::vector<std::string> res;
  
      CmdSearch()
@@ -111,8 +150,14 @@ index 9f864b3a4..b21118ece 100644
      }
  
      std::string description() override
-@@ -63,6 +82,8 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -61,8 +80,14 @@ struct CmdSearch : InstallableCommand, MixJSON
+ 
+     void run(ref<Store> store) override
      {
++        if (_installable == "" && ! file && ! expr) {
++            throw UsageError("nothing to search from, set 'default-flake' option or specify one of '--installable', '--file', '--expr'");
++        }
++
          settings.readOnlyMode = true;
  
 +        auto installable = parseInstallable(store, (file || expr) ? "" : _installable);
@@ -121,10 +166,10 @@ index 9f864b3a4..b21118ece 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index 2b7bcdd68..f654b2f36 100644
+index a4e657980..d0aabb407 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
-@@ -188,7 +188,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+@@ -128,7 +128,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
  # Test defaultPackage.

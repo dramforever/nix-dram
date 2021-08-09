@@ -93,23 +93,20 @@ The documentation has *not* yet been changed to reflect the changes.
 
 ### Changes to `INSTALLABLE`
 
+An configuration option `default-flake` is added, which specifies the default
+flake URL when using the command line interface.
+
 An `INSTALLABLE` command line argument, such as that of `nix run`, now has and
 additional rule when parsing:
 
 - If an `INSTALLABLE` looks like an attribute path, e.g. `foo.bar`, it is looked
-  up as if it were `flake:default#foo.bar`.
+  up as if it were `<default-flake>#foo.bar`, where `<default-flake>` is taken
+  from the config. If the config is unset an error is reported.
 
-  'Looks like an attribute path' is
-  defined as fully matching the regular expression
-  `[a-zA-Z0-9_"-][a-zA-Z0-9_".-]`
+  'Looks like an attribute path' is defined as fully matching the regular
+  expression `[a-zA-Z0-9_"-][a-zA-Z0-9_".-]`
 
 - Otherwise it is treated as a Flake `INSTALLABLE` as before.
-
-`flake:default` is an [indirect Flake reference to the registry][docs-indirect].
-`flake:default` can be set using `nix registry` to refer to a personal flake
-containing outputs such as packages or NixOS configurations. It is not
-necessarily (but can be) the same as `flake:nixpkgs`. To avoid unnecessarily
-prioritizing Nixpkgs, `flake:nixpkgs` is not used.
 
 Command line completion of the new `INSTALLABLE` syntax *is* supported.
 
@@ -119,14 +116,15 @@ Command line completion of the new `INSTALLABLE` syntax *is* supported.
 `--override-flake`), the behavior is not changed, i.e. using `nixpkgs` there
 still means `--override-flake flake:nixpkgs [...]` .)
 
-The following table shows the incompatibilities. The 'Legacy
-compatibility' columns shows a syntax to use that both `nix-dram` and
-`nixFlakes` will interpret according to the column 'Meaning in `nixFlakes`'.
+The following table shows the incompatibilities. The 'Legacy compatibility'
+columns shows a syntax to use that both `nix-dram` and `nixFlakes` will
+interpret according to the column 'Meaning in `nixFlakes`'. As mentioned above,
+`<default-flake>` means the value taken from Nix configuration.
 
 | Syntax | Meaning in `nix-dram` | Meaning in `nixFlakes` | Legacy compatibility |
 |---|---|---|---|
-| `blender` | `flake:default#blender` | `flake:blender` | `blender#` |
-| `xorg.xclock` | `flake:default#xorg.xclock` | `./xorg.xclock/` (directory) | `./xorg.xclock` or `xorg.xclock/` |
+| `blender` | `<default-flake>#blender` | `flake:blender` | `blender#` |
+| `xorg.xclock` | `<default-flake>#xorg.xclock` | `./xorg.xclock/` (directory) | `./xorg.xclock` or `xorg.xclock/` |
 
 One notable example is that if you want to refer to the `result` symlink from a
 build output, you will need to specify `./result` or `result/`.
@@ -161,7 +159,8 @@ It now has this syntax:
 $ nix search [options] [KEYWORD]
 ```
 
-With the `INSTALLABLE` argument moved into an option, defaulting to `flake:default`:
+With the `INSTALLABLE` argument moved into an option, defaulting to that
+specified in the `default-flake` option:
 
 ```plain
   -i, --installable INSTALLABLE     Search within this installable
@@ -281,6 +280,11 @@ to improvements, but is not *that* keen on the idea.
 
 [the-feature-request]: https://github.com/NixOS/nix/issues/4438
 
+After some discussion with [gytis-ivaskevicius], the default flake was made
+configurable with the config file.
+
+[gytis-ivaskevicius]: https://github.com/gytis-ivaskevicius
+
 The basic idea of `nix-dram` is based on a slightly different prediction of how
 Flakes will be used. Namely, it is predicted that users will create their own
 personal Flake, referencing other Flakes as inputs. It will possibly provide a
@@ -288,7 +292,7 @@ package set for use in `nix` commands, various `nixosConfigurations`, and so on.
 
 'Smaller' Flakes will exists and possibly even in great numbers, but each user
 will have their own 'favorite' Flake to be used for most purposes. In `nix-dram`
-that flake will be assigned `flake:default`. This indeed seems to be the use
+that flake will be assigned `default-flake`. This indeed seems to be the use
 case with popular demonstration repositories such as [nixflk] showing this
 approach. Will this be how we use Flakes in the future? We will have to wait and
 see.
@@ -312,27 +316,8 @@ commands will also work, like `nix run`, `nix eval`, `nix develop`, `nix edit`.
 
 A wrapper around `nix` would mean more subcommands I'd feel comfortable
 implementing, honestly. On the other hand, if you do the C++ work, to modify
-`INSTALLABLE` handling, there's just one function you need to touch:
-
-```diff
-@@ -20,6 +20,10 @@
-
- namespace nix {
-
-+const static std::regex attrPathRegex(
-+    "(?:[a-zA-Z0-9-_][a-zA-Z0-9-._]*)",
-+    std::regex::ECMAScript);
-+
-@@ -626,7 +642,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
--                auto [flakeRef, fragment] = parseFlakeRefWithFragment(s, absPath("."));
-+                bool isAttrPath = std::regex_match(s, attrPathRegex);
-+
-+                auto [flakeRef, fragment] =
-+                    isAttrPath
-+                    ? std::make_pair(parseFlakeRef("flake:default", absPath(".")), s)
-+                    : parseFlakeRefWithFragment(s, absPath("."));
-+
-```
+`INSTALLABLE` handling, there's just one function you absolutely need to touch,
+namely `SourceExprCommand::parseInstallables`:
 
 Another thing is compatibility with the old syntax. In the case of a wrapper, it
 could be possible to be allow for both 'implicit flake' and 'explicit flake'
@@ -344,8 +329,8 @@ A script would need to look at *each* `INSTALLABLE` argument and translate those
 that need translating. Figuring out which arguments are `INSTALLABLE` is
 actually the hardest part. A wrapper would need to either understand all the
 options or require something like a `--` marker, otherwise it could accidentally
-change `--override-flake foo bar` into `--override-flake flake:default#foo
-flake:default#bar`.
+change `--override-flake foo bar` into `--override-flake <default-flake>#foo
+<default-flake>#bar`.
 
 ### Command line completion
 
@@ -357,10 +342,10 @@ well, but that's honestly way too much for me.
 That's because `nix` the program itself handles command line completion. If you
 write a wrapper, you need to to translate completion requests/responses (Yes,
 responses as well if you don't want `wires` completing to
-`flake:default#wireshark`). You may even need to call `nix` *twice* to generate
-completion for both the registry and attributes. It seems *much* more work than
-just patching whatever generates the completion. And the problem of handling
-options also occurs here.
+`<default-flake>#wireshark`). You may even need to call `nix` *twice* to
+generate completion for both the registry and attributes. It seems *much* more
+work than just patching whatever generates the completion. And the problem of
+handling options also occurs here.
 
 ### Are you sure this is the best way?
 
