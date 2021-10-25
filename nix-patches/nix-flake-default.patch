@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 658b415f3..496632ba2 100644
+index 0f0fcf39e..58804de04 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -20,6 +20,23 @@
@@ -26,7 +26,7 @@ index 658b415f3..496632ba2 100644
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -227,12 +244,23 @@ void completeFlakeRefWithFragment(
+@@ -231,12 +248,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -54,7 +54,7 @@ index 658b415f3..496632ba2 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -263,7 +291,10 @@ void completeFlakeRefWithFragment(
+@@ -267,7 +295,10 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = attr->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -66,7 +66,7 @@ index 658b415f3..496632ba2 100644
                      }
                  }
              }
-@@ -312,7 +343,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -303,7 +334,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -75,8 +75,8 @@ index 658b415f3..496632ba2 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -662,7 +693,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
-             std::exception_ptr ex;
+@@ -666,7 +697,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+             }
  
              try {
 -                auto [flakeRef, fragment] = parseFlakeRefWithFragment(s, absPath("."));
@@ -91,7 +91,7 @@ index 658b415f3..496632ba2 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 298fd48f8..e1c70b5f4 100644
+index 79931ad3e..427f06333 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -11,6 +11,16 @@
@@ -112,7 +112,7 @@ index 298fd48f8..e1c70b5f4 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c52a48d4e..3a765f57a 100644
+index 0d8fdd5c2..d32234ad0 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -30,13 +30,32 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
@@ -150,7 +150,7 @@ index c52a48d4e..3a765f57a 100644
      }
  
      std::string description() override
-@@ -61,8 +80,14 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -61,9 +80,15 @@ struct CmdSearch : InstallableCommand, MixJSON
  
      void run(ref<Store> store) override
      {
@@ -159,6 +159,7 @@ index c52a48d4e..3a765f57a 100644
 +        }
 +
          settings.readOnlyMode = true;
+         evalSettings.enableImportFromDerivation.setDefault(false);
  
 +        auto installable = parseInstallable(store, (file || expr) ? "" : _installable);
 +
@@ -166,10 +167,10 @@ index c52a48d4e..3a765f57a 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index a4e657980..d0aabb407 100644
+index 57d1b9aad..a013d8e49 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
-@@ -128,7 +128,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+@@ -129,7 +129,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
  # Test defaultPackage.
