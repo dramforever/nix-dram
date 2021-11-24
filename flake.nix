@@ -54,7 +54,7 @@
         nix-nar-listing =
           final.haskellPackages.callPackage ./nix-nar-listing {};
 
-        nix-dram = final.nixUnstable.overrideAttrs (old: {
+        nix-dram = final.nixStable.overrideAttrs (old: {
           name = "nix-dram-" + old.version;
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
@@ -62,7 +62,7 @@
           ];
         });
 
-        nix-dram-progress = final.nixUnstable.overrideAttrs (old: {
+        nix-dram-progress = final.nixStable.overrideAttrs (old: {
           name = "nix-dram-" + old.version;
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
