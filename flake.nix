@@ -1,7 +1,7 @@
 {
   description = "Nix with a modified frontend, by dramforever";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/release-21.11";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   nixConfig = {
