@@ -14,10 +14,12 @@ steps:
       CACHIX_AUTH_TOKEN:
         from_secret: CACHIX_AUTH_TOKEN
     commands:
+      - "nix-channel --add https://nixos.org/channels/nixos-21.11 nixpkgs"
+      - "nix-channel --update"
       - "nix-env -iA nixpkgs.nixFlakes"
       - "echo 'experimental-features = nix-command flakes ca-references' >> /etc/nix/nix.conf"
       - "echo 'max-jobs = auto' >> /etc/nix/nix.conf"
-      - "nix profile install github:NixOS/nixpkgs/nixos-unstable-small#cachix github:NixOS/nixpkgs/nixos-unstable-small#git"
+      - "nix profile install github:NixOS/nixpkgs/nixos-21.11-small#cachix github:NixOS/nixpkgs/nixos-21.11-small#git"
       - "cachix use dram"
       - "cachix watch-exec dram -- nix flake check -vL"
 
@@ -37,9 +39,11 @@ steps:
       CACHIX_AUTH_TOKEN:
         from_secret: CACHIX_AUTH_TOKEN
     commands:
+      - "nix-channel --add https://nixos.org/channels/nixos-21.11 nixpkgs"
+      - "nix-channel --update"
       - "nix-env -iA nixpkgs.nixFlakes"
       - "echo 'experimental-features = nix-command flakes ca-references' >> /etc/nix/nix.conf"
       - "echo 'max-jobs = auto' >> /etc/nix/nix.conf"
-      - "nix profile install github:NixOS/nixpkgs/nixos-unstable-small#cachix github:NixOS/nixpkgs/nixos-unstable-small#git"
+      - "nix profile install github:NixOS/nixpkgs/nixos-21.11-small#cachix github:NixOS/nixpkgs/nixos-21.11-small#git"
       - "cachix use dram"
       - "cachix watch-exec dram -- nix flake check -vL"
