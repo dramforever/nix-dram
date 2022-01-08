@@ -1,0 +1,82 @@
+diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
+index 81ca9cc0f..815345df6 100644
+--- a/src/libstore/globals.cc
++++ b/src/libstore/globals.cc
+@@ -252,6 +252,39 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+ }
+ 
+ 
++void EnvironmentSetting::set(const std::string & str, bool append)
++{
++    if (! append) {
++        for (auto & [name, oldValue] : oldEnvironment) {
++            if (oldValue.has_value()) {
++                setenv(name.c_str(), oldValue->c_str(), 1);
++            } else {
++                unsetenv(name.c_str());
++            }
++        }
++        oldEnvironment.clear();
++    }
++
++    StringMap newValues;
++
++    for (auto & elem : tokenizeString<Strings>(str)) {
++        // Each element has format: name=value
++        size_t pos = elem.find('=');
++        if (pos == std::string::npos) {
++            throw UsageError("malformed environment option");
++        }
++        newValues.emplace(elem.substr(0, pos), elem.substr(pos + 1));
++    }
++
++    for (auto & [name, newValue] : newValues) {
++        oldEnvironment.emplace(name, getEnv(name));
++        setenv(name.c_str(), newValue.c_str(), 1);
++    }
++
++    BaseSetting<Strings>::set(str, append);
++}
++
++
+ void initPlugins()
+ {
+     assert(!settings.pluginFiles.pluginsLoaded);
+diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
+index 1911ec855..49799c410 100644
+--- a/src/libstore/globals.hh
++++ b/src/libstore/globals.hh
+@@ -46,6 +46,23 @@ struct PluginFilesSetting : public BaseSetting<Paths>
+     void set(const std::string & str, bool append = false) override;
+ };
+ 
++struct EnvironmentSetting : public BaseSetting<Strings>
++{
++    std::map<std::string, std::optional<std::string>> oldEnvironment;
++
++    EnvironmentSetting(Config * options,
++        const Paths & def,
++        const std::string & name,
++        const std::string & description,
++        const std::set<std::string> & aliases = {})
++        : BaseSetting<Paths>(def, true, name, description, aliases)
++    {
++        options->addSetting(this);
++    }
++
++    void set(const std::string & str, bool append = false) override;
++};
++
+ class Settings : public Config {
+ 
+     unsigned int getDefaultCores();
+@@ -966,6 +983,9 @@ public:
+ 
+     Setting<bool> acceptFlakeConfig{this, false, "accept-flake-config",
+         "Whether to accept nix configuration from a flake without prompting."};
++
++    EnvironmentSetting environment{this, {}, "environment",
++        "Extra environments variables, as a list of `name=value` pairs."};
+ };
+ 
+ 
