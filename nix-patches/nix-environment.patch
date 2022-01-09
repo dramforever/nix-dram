@@ -1,16 +1,17 @@
-commit 86270ff0b76757c77ac7744c0028b5da5e69824b
-Author: dramforever <dramforever@live.com>
-Date:   Sat Jan 8 22:48:58 2022 +0800
-
-    Add environment config
-    
-    Make it possible to send environment variables to the daemon.
-
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 81ca9cc0f..1ead121b3 100644
+index 81ca9cc0f..b2cbd8089 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -252,6 +252,46 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+@@ -83,6 +83,8 @@ void loadConfFile()
+        ~/.nix/nix.conf or the command line. */
+     globalConfig.resetOverridden();
+ 
++    settings.environment.overridden = settings.environment.hasInherited;
++
+     auto files = settings.nixUserConfFiles;
+     for (auto file = files.rbegin(); file != files.rend(); file++) {
+         globalConfig.applyConfigFile(*file);
+@@ -252,6 +254,47 @@ void PluginFilesSetting::set(const std::string & str, bool append)
  }
  
  
@@ -26,6 +27,7 @@ index 81ca9cc0f..1ead121b3 100644
 +        }
 +        oldEnvironment.clear();
 +        value.clear();
++        hasInherited = false;
 +    }
 +
 +    StringMap newValues;
@@ -37,6 +39,8 @@ index 81ca9cc0f..1ead121b3 100644
 +            char * value = getenv(elem.c_str());
 +            if (value) {
 +                newValues.insert_or_assign(elem, std::string(value));
++                hasInherited = true;
++                overridden = true;
 +            }
 +        } else {
 +            // name=value
@@ -47,10 +51,8 @@ index 81ca9cc0f..1ead121b3 100644
 +    for (auto & [name, newValue] : newValues) {
 +        oldEnvironment.emplace(name, getEnv(name));
 +        setenv(name.c_str(), newValue.c_str(), 1);
++        value.insert_or_assign(name, newValue);
 +    }
-+
-+    newValues.merge(value);
-+    value = newValues;
 +}
 +
 +
@@ -58,16 +60,17 @@ index 81ca9cc0f..1ead121b3 100644
  {
      assert(!settings.pluginFiles.pluginsLoaded);
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 1911ec855..dce549844 100644
+index 1911ec855..071cb6e73 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -46,6 +46,23 @@ struct PluginFilesSetting : public BaseSetting<Paths>
+@@ -46,6 +46,24 @@ struct PluginFilesSetting : public BaseSetting<Paths>
      void set(const std::string & str, bool append = false) override;
  };
  
 +struct EnvironmentSetting : public BaseSetting<StringMap>
 +{
 +    std::map<std::string, std::optional<std::string>> oldEnvironment;
++    bool hasInherited = false;
 +
 +    EnvironmentSetting(Config * options,
 +        const StringMap & def,
@@ -85,7 +88,7 @@ index 1911ec855..dce549844 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -966,6 +983,23 @@ public:
+@@ -966,6 +984,23 @@ public:
  
      Setting<bool> acceptFlakeConfig{this, false, "accept-flake-config",
          "Whether to accept nix configuration from a flake without prompting."};
