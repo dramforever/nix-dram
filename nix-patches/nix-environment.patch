@@ -1,0 +1,114 @@
+diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
+index 81ca9cc0f..b2cbd8089 100644
+--- a/src/libstore/globals.cc
++++ b/src/libstore/globals.cc
+@@ -83,6 +83,8 @@ void loadConfFile()
+        ~/.nix/nix.conf or the command line. */
+     globalConfig.resetOverridden();
+ 
++    settings.environment.overridden = settings.environment.hasInherited;
++
+     auto files = settings.nixUserConfFiles;
+     for (auto file = files.rbegin(); file != files.rend(); file++) {
+         globalConfig.applyConfigFile(*file);
+@@ -252,6 +254,47 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+ }
+ 
+ 
++void EnvironmentSetting::set(const std::string & str, bool append)
++{
++    if (! append) {
++        for (auto & [name, oldValue] : oldEnvironment) {
++            if (oldValue.has_value()) {
++                setenv(name.c_str(), oldValue->c_str(), 1);
++            } else {
++                unsetenv(name.c_str());
++            }
++        }
++        oldEnvironment.clear();
++        value.clear();
++        hasInherited = false;
++    }
++
++    StringMap newValues;
++
++    for (auto & elem : tokenizeString<Strings>(str)) {
++        size_t pos = elem.find('=');
++        if (pos == std::string::npos) {
++            // name
++            char * value = getenv(elem.c_str());
++            if (value) {
++                newValues.insert_or_assign(elem, std::string(value));
++                hasInherited = true;
++                overridden = true;
++            }
++        } else {
++            // name=value
++            newValues.insert_or_assign(elem.substr(0, pos), elem.substr(pos + 1));
++        }
++    }
++
++    for (auto & [name, newValue] : newValues) {
++        oldEnvironment.emplace(name, getEnv(name));
++        setenv(name.c_str(), newValue.c_str(), 1);
++        value.insert_or_assign(name, newValue);
++    }
++}
++
++
+ void initPlugins()
+ {
+     assert(!settings.pluginFiles.pluginsLoaded);
+diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
+index 1911ec855..071cb6e73 100644
+--- a/src/libstore/globals.hh
++++ b/src/libstore/globals.hh
+@@ -46,6 +46,24 @@ struct PluginFilesSetting : public BaseSetting<Paths>
+     void set(const std::string & str, bool append = false) override;
+ };
+ 
++struct EnvironmentSetting : public BaseSetting<StringMap>
++{
++    std::map<std::string, std::optional<std::string>> oldEnvironment;
++    bool hasInherited = false;
++
++    EnvironmentSetting(Config * options,
++        const StringMap & def,
++        const std::string & name,
++        const std::string & description,
++        const std::set<std::string> & aliases = {})
++        : BaseSetting<StringMap>(def, true, name, description, aliases)
++    {
++        options->addSetting(this);
++    }
++
++    void set(const std::string & str, bool append = false) override;
++};
++
+ class Settings : public Config {
+ 
+     unsigned int getDefaultCores();
+@@ -966,6 +984,23 @@ public:
+ 
+     Setting<bool> acceptFlakeConfig{this, false, "accept-flake-config",
+         "Whether to accept nix configuration from a flake without prompting."};
++
++    EnvironmentSetting environment{this, {}, "environment",
++        R"(
++          Extra environments variables to use. A list of items, each in the
++          format of:
++
++          - `name=value`: Set environment variable `name` to `value`.
++          - `name`: Inherit environment variable `name` from current
++            environment.
++
++          If the user is trusted (see `trusted-users` option), the daemon will
++          also have these environment variables set.
++
++          This option is useful for, e.g., setting `https_proxy` for
++          fixed-output derivations and substituter downloads in a multi-user
++          Nix installation.
++        )"};
+ };
+ 
+ 

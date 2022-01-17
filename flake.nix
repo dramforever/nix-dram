@@ -59,6 +59,7 @@
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
+            ./nix-patches/nix-environment.patch
           ];
         });
 
@@ -67,6 +68,7 @@
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
+            ./nix-patches/nix-environment.patch
             (final.fetchpatch {
               name = "nix-progress.diff";
               url = "https://github.com/NixOS/nix/compare/480426a...1af0a16.diff";
