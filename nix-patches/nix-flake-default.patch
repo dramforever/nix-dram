@@ -123,12 +123,15 @@ index ced6b3f10..00d2fa6e0 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index e9307342c..24cd16cbc 100644
+index e9307342c..28b7f89f3 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -23,11 +23,30 @@ std::string wrap(std::string prefix, std::string s)
+@@ -21,13 +21,32 @@ std::string wrap(std::string prefix, std::string s)
+     return prefix + s + ANSI_NORMAL;
+ }
  
- struct CmdSearch : InstallableCommand, MixJSON
+-struct CmdSearch : InstallableCommand, MixJSON
++struct CmdSearch : SourceExprCommand, MixJSON
  {
 +    std::string _installable{installablesSettings.defaultFlake};
      std::vector<std::string> res;
