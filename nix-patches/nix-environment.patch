@@ -1,27 +1,193 @@
-diff --git a/tests/environment.nix b/tests/environment.nix
-index eb517883c..2b0380ed7 100644
---- a/tests/environment.nix
-+++ b/tests/environment.nix
-@@ -1,12 +1,16 @@
- { var, value }:
+diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
+index 81ca9cc0f..d52dfa18d 100644
+--- a/src/libstore/globals.cc
++++ b/src/libstore/globals.cc
+@@ -83,6 +83,8 @@ void loadConfFile()
+        ~/.nix/nix.conf or the command line. */
+     globalConfig.resetOverridden();
  
--derivation {
++    settings.environment.overridden = settings.environment.hasInherited;
++
+     auto files = settings.nixUserConfFiles;
+     for (auto file = files.rbegin(); file != files.rend(); file++) {
+         globalConfig.applyConfigFile(*file);
+@@ -252,6 +254,47 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+ }
+ 
+ 
++void EnvironmentSetting::set(const std::string & str, bool append)
++{
++    if (! append) {
++        for (auto & [name, oldValue] : oldEnvironment) {
++            if (oldValue.has_value()) {
++                setenv(name.c_str(), oldValue->c_str(), 1);
++            } else {
++                unsetenv(name.c_str());
++            }
++        }
++        oldEnvironment.clear();
++        value.clear();
++        hasInherited = false;
++    }
++
++    StringMap newValues;
++
++    for (auto & elem : tokenizeString<Strings>(str)) {
++        size_t pos = elem.find('=');
++        if (pos == std::string::npos) {
++            // name
++            auto envValue = getEnv(elem.c_str());
++            if (envValue.has_value()) {
++                newValues.insert_or_assign(elem, envValue.value());
++                hasInherited = true;
++                overridden = true;
++            }
++        } else {
++            // name=value
++            newValues.insert_or_assign(elem.substr(0, pos), elem.substr(pos + 1));
++        }
++    }
++
++    for (auto & [name, newValue] : newValues) {
++        oldEnvironment.emplace(name, getEnv(name));
++        setenv(name.c_str(), newValue.c_str(), 1);
++        value.insert_or_assign(name, newValue);
++    }
++}
++
++
+ void initPlugins()
+ {
+     assert(!settings.pluginFiles.pluginsLoaded);
+diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
+index f65893b10..67f7d66af 100644
+--- a/src/libstore/globals.hh
++++ b/src/libstore/globals.hh
+@@ -46,6 +46,24 @@ struct PluginFilesSetting : public BaseSetting<Paths>
+     void set(const std::string & str, bool append = false) override;
+ };
+ 
++struct EnvironmentSetting : public BaseSetting<StringMap>
++{
++    std::map<std::string, std::optional<std::string>> oldEnvironment;
++    bool hasInherited = false;
++
++    EnvironmentSetting(Config * options,
++        const StringMap & def,
++        const std::string & name,
++        const std::string & description,
++        const std::set<std::string> & aliases = {})
++        : BaseSetting<StringMap>(def, true, name, description, aliases)
++    {
++        options->addSetting(this);
++    }
++
++    void set(const std::string & str, bool append = false) override;
++};
++
+ class Settings : public Config {
+ 
+     unsigned int getDefaultCores();
+@@ -973,6 +991,23 @@ public:
+           The commit summary to use when commiting changed flake lock files. If
+           empty, the summary is generated based on the action performed.
+         )"};
++
++    EnvironmentSetting environment{this, {}, "environment",
++        R"(
++          Extra environments variables to use. A list of items, each in the
++          format of:
++
++          - `name=value`: Set environment variable `name` to `value`.
++          - `name`: Inherit environment variable `name` from current
++            environment.
++
++          If the user is trusted (see `trusted-users` option), the daemon will
++          also have these environment variables set.
++
++          This option is useful for, e.g., setting `https_proxy` for
++          fixed-output derivations and substituter downloads in a multi-user
++          Nix installation.
++        )"};
+ };
+ 
+ 
+diff --git a/tests/environment.nix b/tests/environment.nix
+new file mode 100644
+index 000000000..2b0380ed7
+--- /dev/null
++++ b/tests/environment.nix
+@@ -0,0 +1,16 @@
++{ var, value }:
++
 +with import ./config.nix;
 +
 +mkDerivation {
-   name = "test";
--  system = builtins.currentSystem;
--  builder = "/bin/sh";
--  args = [ "-c" ''
--    echo ${var} = "''$${var}"; echo "''$${var}" > "$out"'' ];
++  name = "test";
 +  buildCommand = ''
 +    echo ${var} = "''$${var}"
 +    echo -n "''$${var}" > "$out"
 +  '';
 +
-   impureEnvVars = [ var ];
++  impureEnvVars = [ var ];
 +
-   outputHashAlgo = "sha256";
--  outputHash = builtins.hashString "sha256" "${value}\n";
++  outputHashAlgo = "sha256";
 +  outputHash = builtins.hashString "sha256" value;
- }
++}
+diff --git a/tests/environment.sh b/tests/environment.sh
+new file mode 100644
+index 000000000..681768b45
+--- /dev/null
++++ b/tests/environment.sh
+@@ -0,0 +1,37 @@
++source common.sh
++
++# Needs the config option 'environment' to work
++requireDaemonNewerThan "2.6.0pre20220109"
++
++varTest() {
++    local var="$1"; shift
++    local value="$1"; shift
++    nix build --no-link -vL --argstr var "$var" --argstr value "$value" --impure "$@" --file environment.nix
++    clearStore
++}
++
++clearStore
++startDaemon
++
++varTest env_name value --environment env_name=value
++env_name=value varTest env_name value --environment env_name
++
++echo 'environment = env_name set_in_config=daemon_value' >> "$NIX_CONF_DIR/nix.conf"
++env_name=daemon_value restartDaemon
++
++varTest env_name daemon_value
++env_name=client_value varTest env_name client_value
++varTest env_name client_value --environment env_name=client_value
++
++varTest set_in_config daemon_value
++set_in_config=client_value varTest set_in_config daemon_value
++varTest set_in_config client_value --environment set_in_config=client_value
++
++sed -i -e '/^trusted-users =/d' "$NIX_CONF_DIR/nix.conf"
++
++env_name=daemon_value restartDaemon
++
++varTest env_name daemon_value --environment env_name=client_value
++env_name=client_value varTest env_name daemon_value --environment env_name
++
++killDaemon
+diff --git a/tests/local.mk b/tests/local.mk
+index 93cf20d43..a73ecfe48 100644
+--- a/tests/local.mk
++++ b/tests/local.mk
+@@ -62,7 +62,8 @@ nix_tests = \
+   ca/nix-copy.sh \
+   eval-store.sh \
+   readfile-context.sh \
+-  why-depends.sh
++  why-depends.sh \
++  environment.sh
+   # parallel.sh
+ 
+ ifeq ($(HAVE_LIBCPUID), 1)

@@ -1,16 +1,16 @@
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 0d8fdd5c2..5fa3f935b 100644
+index e9307342c..9f293fff8 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -9,6 +9,7 @@
- #include "shared.hh"
+@@ -10,6 +10,7 @@
  #include "eval-cache.hh"
  #include "attr-path.hh"
+ #include "fmt.hh"
 +#include "value-to-json.hh"
  
  #include <regex>
  #include <fstream>
-@@ -131,6 +132,11 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -130,6 +131,11 @@ struct CmdSearch : InstallableCommand, MixJSON
                              jsonElem.attr("pname", name.name);
                              jsonElem.attr("version", name.version);
                              jsonElem.attr("description", description);
@@ -20,5 +20,5 @@ index 0d8fdd5c2..5fa3f935b 100644
 +                            PathSet context;
 +                            printValueAsJSON(*state, true, aMeta->forceValue(), noPos, jsonMeta, context);
                          } else {
-                             auto name2 = hilite(name.name, nameMatch, "\e[0;2m");
+                             auto name2 = hiliteMatches(name.name, std::move(nameMatches), ANSI_GREEN, "\e[0;2m");
                              if (results > 1) logger->cout("");

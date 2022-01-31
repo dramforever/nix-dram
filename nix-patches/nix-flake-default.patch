@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 6c20bb7b1..b9389cb55 100644
+index 0c2db0399..533d72c18 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -20,6 +20,23 @@
@@ -86,7 +86,7 @@ index 6c20bb7b1..b9389cb55 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -673,7 +704,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -702,7 +733,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -102,7 +102,7 @@ index 6c20bb7b1..b9389cb55 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 79931ad3e..427f06333 100644
+index ced6b3f10..00d2fa6e0 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -11,6 +11,16 @@
@@ -123,15 +123,12 @@ index 79931ad3e..427f06333 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 0d8fdd5c2..d32234ad0 100644
+index e9307342c..24cd16cbc 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -30,13 +30,32 @@ std::string hilite(const std::string & s, const std::smatch & m, std::string pos
-           + std::string(m.suffix());
- }
+@@ -23,11 +23,30 @@ std::string wrap(std::string prefix, std::string s)
  
--struct CmdSearch : InstallableCommand, MixJSON
-+struct CmdSearch : SourceExprCommand, MixJSON
+ struct CmdSearch : InstallableCommand, MixJSON
  {
 +    std::string _installable{installablesSettings.defaultFlake};
      std::vector<std::string> res;
@@ -161,7 +158,7 @@ index 0d8fdd5c2..d32234ad0 100644
      }
  
      std::string description() override
-@@ -61,9 +80,15 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -52,9 +71,15 @@ struct CmdSearch : InstallableCommand, MixJSON
  
      void run(ref<Store> store) override
      {
@@ -191,10 +188,10 @@ index 20e6d09c1..180b66a04 100644
  
  nix build -o $TEST_ROOT/result $flake1Dir
 diff --git a/tests/search.sh b/tests/search.sh
-index ee3261687..e41963c2d 100644
+index 52e12f381..110d0223c 100644
 --- a/tests/search.sh
 +++ b/tests/search.sh
-@@ -3,23 +3,23 @@ source common.sh
+@@ -3,36 +3,36 @@ source common.sh
  clearStore
  clearCache
  
@@ -226,3 +223,20 @@ index ee3261687..e41963c2d 100644
 +nix search -f search.nix |grep -q foo
 +nix search -f search.nix |grep -q bar
 +nix search -f search.nix |grep -q hello
+ 
+ ## Tests for multiple regex/match highlighting
+ 
+ e=$'\x1b' # grep doesn't support \e, \033 or even \x1b
+ # Multiple overlapping regexes
+-(( $(nix search -f search.nix '' 'oo' 'foo' 'oo' | grep "$e\[32;1mfoo$e\\[0;1m" | wc -l) == 1 ))
+-(( $(nix search -f search.nix '' 'broken b' 'en bar' | grep "$e\[32;1mbroken bar$e\\[0m" | wc -l) == 1 ))
++(( $(nix search -f search.nix 'oo' 'foo' 'oo' | grep "$e\[32;1mfoo$e\\[0;1m" | wc -l) == 1 ))
++(( $(nix search -f search.nix 'broken b' 'en bar' | grep "$e\[32;1mbroken bar$e\\[0m" | wc -l) == 1 ))
+ 
+ # Multiple matches
+ # Searching for 'o' should yield the 'o' in 'broken bar', the 'oo' in foo and 'o' in hello
+-(( $(nix search -f search.nix '' 'o' | grep -Eo "$e\[32;1mo{1,2}$e\[(0|0;1)m" | wc -l) == 3 ))
++(( $(nix search -f search.nix 'o' | grep -Eo "$e\[32;1mo{1,2}$e\[(0|0;1)m" | wc -l) == 3 ))
+ # Searching for 'b' should yield the 'b' in bar and the two 'b's in 'broken bar'
+-(( $(nix search -f search.nix '' 'b' | grep -Eo "$e\[32;1mb$e\[(0|0;1)m" | wc -l) == 3 ))
++(( $(nix search -f search.nix 'b' | grep -Eo "$e\[32;1mb$e\[(0|0;1)m" | wc -l) == 3 ))
