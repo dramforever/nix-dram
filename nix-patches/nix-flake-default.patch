@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 0f0fcf39e..58804de04 100644
+index 6c20bb7b1..b9389cb55 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -20,6 +20,23 @@
@@ -26,13 +26,15 @@ index 0f0fcf39e..58804de04 100644
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -231,12 +248,23 @@ void completeFlakeRefWithFragment(
+@@ -233,14 +250,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
 +        bool isAttrPath = std::regex_match(prefix.begin(), prefix.end(), attrPathRegex);
          auto hash = prefix.find('#');
--        if (hash != std::string::npos) {
+-        if (hash == std::string::npos) {
+-            completeFlakeRef(evalState->store, prefix);
+-        } else {
 -            auto fragment = prefix.substr(hash + 1);
 -            auto flakeRefS = std::string(prefix.substr(0, hash));
 +        if (isAttrPath || hash != std::string::npos) {
@@ -54,7 +56,7 @@ index 0f0fcf39e..58804de04 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -267,7 +295,10 @@ void completeFlakeRefWithFragment(
+@@ -273,7 +299,10 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = attr->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -66,7 +68,16 @@ index 0f0fcf39e..58804de04 100644
                      }
                  }
              }
-@@ -303,7 +334,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -291,6 +320,8 @@ void completeFlakeRefWithFragment(
+     } catch (Error & e) {
+         warn(e.msg());
+     }
++
++    completeFlakeRef(evalState->store, prefix);
+ }
+ 
+ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -310,7 +341,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -75,7 +86,7 @@ index 0f0fcf39e..58804de04 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -666,7 +697,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -673,7 +704,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -167,7 +178,7 @@ index 0d8fdd5c2..d32234ad0 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index 57d1b9aad..a013d8e49 100644
+index 20e6d09c1..180b66a04 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
 @@ -129,7 +129,7 @@ nix build -o $TEST_ROOT/result flake1#foo
