@@ -178,16 +178,14 @@ index 000000000..681768b45
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
-index 93cf20d43..a73ecfe48 100644
+index 2ec9baa12..4b0b6ecef 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -62,7 +62,8 @@ nix_tests = \
+@@ -60,6 +60,7 @@ nix_tests = \
+   ca/recursive.sh \
+   ca/concurrent-builds.sh \
    ca/nix-copy.sh \
++  environment.sh \
    eval-store.sh \
    readfile-context.sh \
--  why-depends.sh
-+  why-depends.sh \
-+  environment.sh
-   # parallel.sh
- 
- ifeq ($(HAVE_LIBCPUID), 1)
+   store-ping.sh \
