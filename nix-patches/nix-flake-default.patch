@@ -1,8 +1,8 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 0c2db0399..533d72c18 100644
+index b7623d4ba..75efe35c7 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -20,6 +20,23 @@
+@@ -21,6 +21,23 @@
  
  namespace nix {
  
@@ -26,7 +26,7 @@ index 0c2db0399..533d72c18 100644
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -233,14 +250,23 @@ void completeFlakeRefWithFragment(
+@@ -238,14 +255,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -56,8 +56,8 @@ index 0c2db0399..533d72c18 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -273,7 +299,10 @@ void completeFlakeRefWithFragment(
-                         auto attrPath2 = attr->getAttrPath(attr2);
+@@ -278,7 +304,10 @@ void completeFlakeRefWithFragment(
+                         auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
 -                        completions->add(flakeRefS + "#" + concatStringsSep(".", attrPath2));
@@ -68,7 +68,7 @@ index 0c2db0399..533d72c18 100644
                      }
                  }
              }
-@@ -291,6 +320,8 @@ void completeFlakeRefWithFragment(
+@@ -296,6 +325,8 @@ void completeFlakeRefWithFragment(
      } catch (Error & e) {
          warn(e.msg());
      }
@@ -77,7 +77,7 @@ index 0c2db0399..533d72c18 100644
  }
  
  void completeFlakeRef(ref<Store> store, std::string_view prefix)
-@@ -310,7 +341,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -315,7 +346,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -86,7 +86,7 @@ index 0c2db0399..533d72c18 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -702,7 +733,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -722,7 +753,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -102,10 +102,10 @@ index 0c2db0399..533d72c18 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index ced6b3f10..00d2fa6e0 100644
+index e172b71b0..d9d6f8040 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
-@@ -11,6 +11,16 @@
+@@ -12,6 +12,16 @@
  
  namespace nix {
  
@@ -178,13 +178,13 @@ index e9307342c..28b7f89f3 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index 20e6d09c1..180b66a04 100644
+index ea629ae70..bbb214f2f 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
-@@ -129,7 +129,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+@@ -131,7 +131,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
- # Test defaultPackage.
+ # Test packages.default.
 -nix build -o $TEST_ROOT/result flake1
 +nix build -o $TEST_ROOT/result flake1#
  [[ -e $TEST_ROOT/result/hello ]]
