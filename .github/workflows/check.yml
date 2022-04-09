@@ -1,0 +1,28 @@
+name: "Check build & publish to cachix"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v17
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          accept-flake-config = true
+          extra-substituters = https://dram.cachix.org
+          extra-trusted-public-keys = dram.cachix.org-1:baoy1SXpwYdKbqdTbfKGTKauDDeDlHhUpC+QuuILEMY=
+    # comment out once cachix is setup
+    #- uses: cachix/cachix-action@v10
+    #  with:
+    #    name: dram
+    #    authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    # Check if nix-dram builds
+    - run: nix flake check -vL
