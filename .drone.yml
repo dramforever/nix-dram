@@ -1,6 +1,46 @@
 ---
 kind: pipeline
 type: docker
+name: check-x86_64-linux
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: "check"
+    image: docker.io/nixos/nix:2.7.0
+    when:
+      event:
+        - pull_request
+    commands:
+      - "echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf"
+      - "echo 'max-jobs = auto' >> /etc/nix/nix.conf"
+      - "nix --accept-flake-config flake check -vL"
+
+---
+kind: pipeline
+type: docker
+name: check-aarch64-linux
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+  - name: "check"
+    image: docker.io/nixos/nix:2.7.0
+    when:
+      event:
+        - pull_request
+    commands:
+      - "echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf"
+      - "echo 'max-jobs = auto' >> /etc/nix/nix.conf"
+      - "nix --accept-flake-config flake check -vL"
+
+---
+kind: pipeline
+type: docker
 name: build-x86_64-linux
 
 platform:
@@ -19,6 +59,12 @@ steps:
       - "nix profile install nixpkgs#cachix"
       - "cachix use dram"
       - "cachix watch-exec dram -- nix flake check -vL"
+
+trigger:
+  event:
+    - push
+  branch:
+    - main
 
 ---
 kind: pipeline
@@ -41,3 +87,9 @@ steps:
       - "nix profile install nixpkgs#cachix"
       - "cachix use dram"
       - "cachix watch-exec dram -- nix flake check -vL"
+
+trigger:
+  event:
+    - push
+  branch:
+    - main
