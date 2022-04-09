@@ -18,7 +18,7 @@ jobs:
           accept-flake-config = true
           extra-substituters = https://dram.cachix.org
           extra-trusted-public-keys = dram.cachix.org-1:baoy1SXpwYdKbqdTbfKGTKauDDeDlHhUpC+QuuILEMY=
-    # comment out once cachix is setup
+    # comment out once cachix CACHIX_AUTH_TOKEN secret is setup in repo
     #- uses: cachix/cachix-action@v10
     #  with:
     #    name: dram
