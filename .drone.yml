@@ -9,15 +9,14 @@ platform:
 
 steps:
   - name: build
-    image: docker.io/nixos/nix
+    image: docker.io/nixos/nix:2.7.0
     environment:
       CACHIX_AUTH_TOKEN:
         from_secret: CACHIX_AUTH_TOKEN
     commands:
-      - "nix-env -iA nixpkgs.nixFlakes"
-      - "echo 'experimental-features = nix-command flakes ca-references' >> /etc/nix/nix.conf"
+      - "echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf"
       - "echo 'max-jobs = auto' >> /etc/nix/nix.conf"
-      - "nix profile install github:NixOS/nixpkgs/nixos-unstable-small#cachix github:NixOS/nixpkgs/nixos-unstable-small#git"
+      - "nix profile install nixpkgs#cachix"
       - "cachix use dram"
       - "cachix watch-exec dram -- nix flake check -vL"
 
@@ -32,14 +31,13 @@ platform:
 
 steps:
   - name: build
-    image: docker.io/nickcao/nix-aarch64
+    image: docker.io/nixos/nix:2.7.0
     environment:
       CACHIX_AUTH_TOKEN:
         from_secret: CACHIX_AUTH_TOKEN
     commands:
-      - "nix-env -iA nixpkgs.nixFlakes"
-      - "echo 'experimental-features = nix-command flakes ca-references' >> /etc/nix/nix.conf"
+      - "echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf"
       - "echo 'max-jobs = auto' >> /etc/nix/nix.conf"
-      - "nix profile install github:NixOS/nixpkgs/nixos-unstable-small#cachix github:NixOS/nixpkgs/nixos-unstable-small#git"
+      - "nix profile install nixpkgs#cachix"
       - "cachix use dram"
       - "cachix watch-exec dram -- nix flake check -vL"
