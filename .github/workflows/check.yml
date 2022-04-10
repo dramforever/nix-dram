@@ -12,7 +12,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v17
-      with:
     - uses: cachix/cachix-action@v10
       with:
         name: dram
