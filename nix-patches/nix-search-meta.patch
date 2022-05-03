@@ -5,7 +5,7 @@ index e9307342c..9f293fff8 100644
 @@ -10,6 +10,7 @@
  #include "eval-cache.hh"
  #include "attr-path.hh"
- #include "fmt.hh"
+ #include "hilite.hh"
 +#include "value-to-json.hh"
  
  #include <regex>

@@ -178,14 +178,14 @@ index 000000000..681768b45
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
-index 8032fc38a..236df9820 100644
+index e3c4ff4eb..b0a3a201e 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -77,6 +77,7 @@ nix_tests = \
+@@ -80,6 +80,7 @@ nix_tests = \
    post-hook.sh \
    function-trace.sh \
    flake-local-settings.sh \
 +  environment.sh \
+   fmt.sh \
    eval-store.sh \
    why-depends.sh \
-   import-derivation.sh \
