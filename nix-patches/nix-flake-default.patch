@@ -1,8 +1,8 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index b7623d4ba..75efe35c7 100644
+index 55a5e91e9..ffd3087b3 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -21,6 +21,23 @@
+@@ -23,6 +23,24 @@
  
  namespace nix {
  
@@ -23,10 +23,11 @@ index b7623d4ba..75efe35c7 100644
 +    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*))",
 +    std::regex::ECMAScript);
 +
++
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -238,14 +255,23 @@ void completeFlakeRefWithFragment(
+@@ -264,15 +282,22 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -35,8 +36,11 @@ index b7623d4ba..75efe35c7 100644
 -        if (hash == std::string::npos) {
 -            completeFlakeRef(evalState->store, prefix);
 -        } else {
+-            completionType = ctAttrs;
+-
 -            auto fragment = prefix.substr(hash + 1);
 -            auto flakeRefS = std::string(prefix.substr(0, hash));
+-            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
 +        if (isAttrPath || hash != std::string::npos) {
 +            auto fragment =
 +                isAttrPath
@@ -48,8 +52,6 @@ index b7623d4ba..75efe35c7 100644
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
 +                : std::string(prefix.substr(0, hash));
 +
-             // FIXME: do tilde expansion.
--            auto flakeRef = parseFlakeRef(flakeRefS, absPath("."));
 +            auto flakeRef = parseFlakeRef(
 +                flakeRefS,
 +                isAttrPath ? std::optional<std::string>{} : absPath("."));
@@ -60,11 +62,11 @@ index b7623d4ba..75efe35c7 100644
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
--                        completions->add(flakeRefS + "#" + concatStringsSep(".", attrPath2));
+-                        completions->add(flakeRefS + "#" + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
 +                        if (isAttrPath)
-+                            completions->add(concatStringsSep(".", attrPath2));
++                            completions->add(concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
 +                        else
-+                            completions->add(flakeRefS + "#" + concatStringsSep(".", attrPath2));
++                            completions->add(flakeRefS + "#" + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
                      }
                  }
              }
