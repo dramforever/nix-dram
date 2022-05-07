@@ -20,7 +20,7 @@ library
     Nix.Nar.Listing.Types
     Nix.Nar.Listing.Utils
   build-depends:
-      base ^>= 4.14.1.0
+      base >= 4.14.1.0
     , aeson
     , bytestring
     , prettyprinter
@@ -33,7 +33,7 @@ executable nix-nar-listings
   import: common
   main-is:             Main.hs
   build-depends:
-      base ^>= 4.14.1.0
+      base >= 4.14.1.0
     , nix-nar-listing
     , bytestring
     , text
