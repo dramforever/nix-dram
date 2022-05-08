@@ -92,13 +92,13 @@ index 55a5e91e9..ffd3087b3 100644
              }
  
              try {
--                auto [flakeRef, fragment] = parseFlakeRefWithFragment(s, absPath("."));
+-                auto [flakeRef, fragment, outputsSpec] = parseFlakeRefWithFragmentAndOutputsSpec(s, absPath("."));
 +                bool isAttrPath = std::regex_match(s, attrPathRegex);
 +
-+                auto [flakeRef, fragment] =
++                auto [flakeRef, fragment, outputsSpec] =
 +                    isAttrPath
-+                    ? std::make_pair(parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), s)
-+                    : parseFlakeRefWithFragment(s, absPath("."));
++                    ? std::make_tuple(parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), parseOutputsSpec(s))
++                    : parseFlakeRefWithFragmentAndOutputsSpec(s, absPath("."));
 +
                  result.push_back(std::make_shared<InstallableFlake>(
                          this,
