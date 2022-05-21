@@ -1,8 +1,8 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 55a5e91e9..ffd3087b3 100644
+index a94e60aca..c80068d38 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -23,6 +23,24 @@
+@@ -23,6 +23,23 @@
  
  namespace nix {
  
@@ -20,14 +20,13 @@ index 55a5e91e9..ffd3087b3 100644
 +static GlobalConfig::Register rInstallablesSettings(&installablesSettings);
 +
 +const static std::regex attrPathRegex(
-+    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*))",
++    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*(?:\^((\*)|([a-z]+(,[a-z]+)*)))?))",
 +    std::regex::ECMAScript);
-+
 +
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -264,15 +282,22 @@ void completeFlakeRefWithFragment(
+@@ -264,15 +281,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -52,25 +51,29 @@ index 55a5e91e9..ffd3087b3 100644
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
 +                : std::string(prefix.substr(0, hash));
 +
++            // FIXME: do tilde expansion.
 +            auto flakeRef = parseFlakeRef(
 +                flakeRefS,
 +                isAttrPath ? std::optional<std::string>{} : absPath("."));
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -278,7 +304,10 @@ void completeFlakeRefWithFragment(
+@@ -303,7 +328,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
 -                        completions->add(flakeRefS + "#" + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
++
++                        std::string resolvedAttrPath2 = concatStringsSep(".", evalState->symbols.resolve(attrPath2));
++
 +                        if (isAttrPath)
-+                            completions->add(concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
++                            completions->add(resolvedAttrPath2);
 +                        else
-+                            completions->add(flakeRefS + "#" + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
++                            completions->add(flakeRefS + "#" + resolvedAttrPath2);
                      }
                  }
              }
-@@ -296,6 +325,8 @@ void completeFlakeRefWithFragment(
+@@ -321,6 +352,8 @@ void completeFlakeRefWithFragment(
      } catch (Error & e) {
          warn(e.msg());
      }
@@ -79,7 +82,7 @@ index 55a5e91e9..ffd3087b3 100644
  }
  
  void completeFlakeRef(ref<Store> store, std::string_view prefix)
-@@ -315,7 +346,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -340,7 +373,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -88,23 +91,40 @@ index 55a5e91e9..ffd3087b3 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -722,7 +753,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -736,6 +769,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
+     return Installable::nixpkgsFlakeRef();
+ }
+ 
++static std::tuple<FlakeRef, std::string, OutputsSpec> parseOnlyAttrPath(
++    const std::string &s) {
++    auto [fragment, outputsSpec] = parseOutputsSpec(s);
++    return {
++        parseFlakeRef(installablesSettings.getDefaultFlake(s), {}),
++        fragment,
++        outputsSpec
++    };
++}
++
+ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+     ref<Store> store, std::vector<std::string> ss)
+ {
+@@ -791,7 +834,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
--                auto [flakeRef, fragment] = parseFlakeRefWithFragment(s, absPath("."));
+-                auto [flakeRef, fragment, outputsSpec] = parseFlakeRefWithFragmentAndOutputsSpec(s, absPath("."));
 +                bool isAttrPath = std::regex_match(s, attrPathRegex);
 +
-+                auto [flakeRef, fragment] =
++                auto [flakeRef, fragment, outputsSpec] =
 +                    isAttrPath
-+                    ? std::make_pair(parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), s)
-+                    : parseFlakeRefWithFragment(s, absPath("."));
++                    ? parseOnlyAttrPath(s)
++                    : parseFlakeRefWithFragmentAndOutputsSpec(s, absPath("."));
 +
                  result.push_back(std::make_shared<InstallableFlake>(
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index e172b71b0..d9d6f8040 100644
+index 1a5a96153..5b0f9e66f 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -12,6 +12,16 @@
@@ -125,7 +145,7 @@ index e172b71b0..d9d6f8040 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index e9307342c..28b7f89f3 100644
+index 87dc1c0de..1001c016f 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -21,13 +21,32 @@ std::string wrap(std::string prefix, std::string s)
@@ -180,10 +200,10 @@ index e9307342c..28b7f89f3 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index ea629ae70..bbb214f2f 100644
+index 24601784f..537e901ee 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
-@@ -131,7 +131,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+@@ -138,7 +138,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
  # Test packages.default.
