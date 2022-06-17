@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index a94e60aca..c80068d38 100644
+index 21db2b08b..385d8a6dd 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -23,6 +23,23 @@
@@ -91,7 +91,7 @@ index a94e60aca..c80068d38 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -736,6 +769,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
+@@ -748,6 +781,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
      return Installable::nixpkgsFlakeRef();
  }
  
@@ -108,7 +108,7 @@ index a94e60aca..c80068d38 100644
  std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
      ref<Store> store, std::vector<std::string> ss)
  {
-@@ -791,7 +834,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -803,7 +846,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -124,7 +124,7 @@ index a94e60aca..c80068d38 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 1a5a96153..5b0f9e66f 100644
+index 5d715210e..0adcafea0 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -12,6 +12,16 @@
@@ -200,7 +200,7 @@ index 87dc1c0de..1001c016f 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index 24601784f..537e901ee 100644
+index 9a1f0ab6a..680cc1fe3 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
 @@ -138,7 +138,7 @@ nix build -o $TEST_ROOT/result flake1#foo
