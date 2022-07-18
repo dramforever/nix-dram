@@ -1,5 +1,18 @@
+From eab457f8f0ebdcece617cb3f15f095a8f2d8f81a Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Mon, 19 Jul 2021 22:06:31 +0800
+Subject: [PATCH] Support for default flake in new CLI
+
+---
+ src/libcmd/installables.cc | 71 ++++++++++++++++++++++++++++++++------
+ src/libcmd/installables.hh | 10 ++++++
+ src/nix/search.cc          | 27 ++++++++++++++-
+ tests/flakes.sh            |  2 +-
+ tests/search.sh            | 24 ++++++-------
+ 5 files changed, 109 insertions(+), 25 deletions(-)
+
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 21db2b08b..385d8a6dd 100644
+index 03c8f82b3..c16e2efaf 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -23,6 +23,23 @@
@@ -26,7 +39,7 @@ index 21db2b08b..385d8a6dd 100644
  void completeFlakeInputPath(
      ref<EvalState> evalState,
      const FlakeRef & flakeRef,
-@@ -264,15 +281,23 @@ void completeFlakeRefWithFragment(
+@@ -265,15 +282,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -58,7 +71,7 @@ index 21db2b08b..385d8a6dd 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -303,7 +328,13 @@ void completeFlakeRefWithFragment(
+@@ -304,7 +329,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -73,7 +86,7 @@ index 21db2b08b..385d8a6dd 100644
                      }
                  }
              }
-@@ -321,6 +352,8 @@ void completeFlakeRefWithFragment(
+@@ -322,6 +353,8 @@ void completeFlakeRefWithFragment(
      } catch (Error & e) {
          warn(e.msg());
      }
@@ -82,7 +95,7 @@ index 21db2b08b..385d8a6dd 100644
  }
  
  void completeFlakeRef(ref<Store> store, std::string_view prefix)
-@@ -340,7 +373,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -341,7 +374,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -91,7 +104,7 @@ index 21db2b08b..385d8a6dd 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -748,6 +781,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
+@@ -749,6 +782,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
      return Installable::nixpkgsFlakeRef();
  }
  
@@ -108,7 +121,7 @@ index 21db2b08b..385d8a6dd 100644
  std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
      ref<Store> store, std::vector<std::string> ss)
  {
-@@ -803,7 +846,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -804,7 +847,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -124,7 +137,7 @@ index 21db2b08b..385d8a6dd 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 5d715210e..0adcafea0 100644
+index 948f78919..89d6221e0 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -12,6 +12,16 @@
@@ -145,11 +158,11 @@ index 5d715210e..0adcafea0 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 87dc1c0de..1001c016f 100644
+index bdd45cbed..2e56a69a3 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -21,13 +21,32 @@ std::string wrap(std::string prefix, std::string s)
-     return prefix + s + ANSI_NORMAL;
+@@ -21,8 +21,9 @@ std::string wrap(std::string prefix, std::string s)
+     return concatStrings(prefix, s, ANSI_NORMAL);
  }
  
 -struct CmdSearch : InstallableCommand, MixJSON
@@ -157,10 +170,13 @@ index 87dc1c0de..1001c016f 100644
  {
 +    std::string _installable{installablesSettings.defaultFlake};
      std::vector<std::string> res;
+     std::vector<std::string> excludeRes;
  
-     CmdSearch()
-     {
--        expectArgs("regex", &res);
+@@ -38,6 +39,24 @@ struct CmdSearch : InstallableCommand, MixJSON
+                 excludeRes.push_back(s);
+             }},
+         });
++
 +        bool hasInstallable = false;
 +
 +        addFlag({
@@ -178,12 +194,10 @@ index 87dc1c0de..1001c016f 100644
 +        if (hasInstallable && (file || expr)) {
 +            throw UsageError("'--installable' cannot be used together with '--file' or '--expr'");
 +        }
-+
-+        expectArgs("args", &res);
      }
  
      std::string description() override
-@@ -52,9 +71,15 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -62,9 +81,15 @@ struct CmdSearch : InstallableCommand, MixJSON
  
      void run(ref<Store> store) override
      {
@@ -200,7 +214,7 @@ index 87dc1c0de..1001c016f 100644
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes.sh b/tests/flakes.sh
-index 9a1f0ab6a..680cc1fe3 100644
+index 35cf4d8e7..89ad319e0 100644
 --- a/tests/flakes.sh
 +++ b/tests/flakes.sh
 @@ -138,7 +138,7 @@ nix build -o $TEST_ROOT/result flake1#foo
@@ -213,10 +227,10 @@ index 9a1f0ab6a..680cc1fe3 100644
  
  nix build -o $TEST_ROOT/result $flake1Dir
 diff --git a/tests/search.sh b/tests/search.sh
-index 52e12f381..110d0223c 100644
+index 1a98f5b49..df27e1a64 100644
 --- a/tests/search.sh
 +++ b/tests/search.sh
-@@ -3,36 +3,36 @@ source common.sh
+@@ -3,40 +3,40 @@ source common.sh
  clearStore
  clearCache
  
@@ -253,15 +267,22 @@ index 52e12f381..110d0223c 100644
  
  e=$'\x1b' # grep doesn't support \e, \033 or even \x1b
  # Multiple overlapping regexes
--(( $(nix search -f search.nix '' 'oo' 'foo' 'oo' | grep "$e\[32;1mfoo$e\\[0;1m" | wc -l) == 1 ))
--(( $(nix search -f search.nix '' 'broken b' 'en bar' | grep "$e\[32;1mbroken bar$e\\[0m" | wc -l) == 1 ))
-+(( $(nix search -f search.nix 'oo' 'foo' 'oo' | grep "$e\[32;1mfoo$e\\[0;1m" | wc -l) == 1 ))
-+(( $(nix search -f search.nix 'broken b' 'en bar' | grep "$e\[32;1mbroken bar$e\\[0m" | wc -l) == 1 ))
+-(( $(nix search -f search.nix '' 'oo' 'foo' 'oo' | grep -c "$e\[32;1mfoo$e\\[0;1m") == 1 ))
+-(( $(nix search -f search.nix '' 'broken b' 'en bar' | grep -c "$e\[32;1mbroken bar$e\\[0m") == 1 ))
++(( $(nix search -f search.nix 'oo' 'foo' 'oo' | grep -c "$e\[32;1mfoo$e\\[0;1m") == 1 ))
++(( $(nix search -f search.nix 'broken b' 'en bar' | grep -c "$e\[32;1mbroken bar$e\\[0m") == 1 ))
  
  # Multiple matches
  # Searching for 'o' should yield the 'o' in 'broken bar', the 'oo' in foo and 'o' in hello
--(( $(nix search -f search.nix '' 'o' | grep -Eo "$e\[32;1mo{1,2}$e\[(0|0;1)m" | wc -l) == 3 ))
-+(( $(nix search -f search.nix 'o' | grep -Eo "$e\[32;1mo{1,2}$e\[(0|0;1)m" | wc -l) == 3 ))
+-(( $(nix search -f search.nix '' 'o' | grep -Eoc "$e\[32;1mo{1,2}$e\[(0|0;1)m") == 3 ))
++(( $(nix search -f search.nix 'o' | grep -Eoc "$e\[32;1mo{1,2}$e\[(0|0;1)m") == 3 ))
  # Searching for 'b' should yield the 'b' in bar and the two 'b's in 'broken bar'
+ # NOTE: This does not work with `grep -c` because it counts the two 'b's in 'broken bar' as one matched line
 -(( $(nix search -f search.nix '' 'b' | grep -Eo "$e\[32;1mb$e\[(0|0;1)m" | wc -l) == 3 ))
 +(( $(nix search -f search.nix 'b' | grep -Eo "$e\[32;1mb$e\[(0|0;1)m" | wc -l) == 3 ))
+ 
+ ## Tests for --exclude
+ (( $(nix search -f search.nix -e hello | grep -c hello) == 0 ))
+-- 
+2.36.1
+
