@@ -29,10 +29,7 @@
           program = "${packages.nix-dram}/bin/nix";
         };
 
-        nix-dram-progress = {
-          type = "app";
-          program = "${packages.nix-dram-progress}/bin/nix";
-        };
+        default = apps.nix-dram;
       };
 
       packages =
@@ -45,6 +42,8 @@
             nix-dram nix-dram-progress
             nix-search nix-search-pretty
             nix-nar-listing;
+
+          default = packages.nix-dram;
         };
     }) // {
       overlay = final: prev: {
