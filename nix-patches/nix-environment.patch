@@ -181,10 +181,10 @@ diff --git a/tests/local.mk b/tests/local.mk
 index e3c4ff4eb..b0a3a201e 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -80,6 +80,7 @@ nix_tests = \
+@@ -87,6 +87,7 @@ nix_tests = \
    post-hook.sh \
    function-trace.sh \
-   flake-local-settings.sh \
+   flakes/config.sh \
 +  environment.sh \
    fmt.sh \
    eval-store.sh \

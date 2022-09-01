@@ -18,7 +18,7 @@ index 03c8f82b3..c16e2efaf 100644
 @@ -23,6 +23,23 @@
  
  namespace nix {
- 
+
 +std::string InstallablesSettings::getDefaultFlake(std::string_view url)
 +{
 +    std::string res = defaultFlake;
@@ -36,9 +36,9 @@ index 03c8f82b3..c16e2efaf 100644
 +    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*(?:\^((\*)|([a-z]+(,[a-z]+)*)))?))",
 +    std::regex::ECMAScript);
 +
- void completeFlakeInputPath(
-     ref<EvalState> evalState,
-     const FlakeRef & flakeRef,
+ MixFlakeOptions::MixFlakeOptions()
+ {
+     auto category = "Common flake-related options";
 @@ -265,15 +282,23 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
@@ -213,10 +213,10 @@ index bdd45cbed..2e56a69a3 100644
          // Empty search string should match all packages
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
-diff --git a/tests/flakes.sh b/tests/flakes.sh
+diff --git a/tests/flakes/flakes.sh b/tests/flakes/flakes.sh
 index 35cf4d8e7..89ad319e0 100644
---- a/tests/flakes.sh
-+++ b/tests/flakes.sh
+--- a/tests/flakes/flakes.sh
++++ b/tests/flakes/flakes.sh
 @@ -138,7 +138,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
@@ -285,4 +285,3 @@ index 1a98f5b49..df27e1a64 100644
  (( $(nix search -f search.nix -e hello | grep -c hello) == 0 ))
 -- 
 2.36.1
-
