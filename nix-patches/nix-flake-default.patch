@@ -7,6 +7,7 @@ Subject: [PATCH] Support for default flake in new CLI
  src/libcmd/installables.cc | 71 ++++++++++++++++++++++++++++++++------
  src/libcmd/installables.hh | 10 ++++++
  src/nix/search.cc          | 27 ++++++++++++++-
+ tests/completions.sh       |  2 +-
  tests/flakes.sh            |  2 +-
  tests/search.sh            | 24 ++++++-------
  5 files changed, 109 insertions(+), 25 deletions(-)
@@ -226,6 +227,17 @@ index 35cf4d8e7..89ad319e0 100644
  [[ -e $TEST_ROOT/result/hello ]]
  
  nix build -o $TEST_ROOT/result $flake1Dir
+diff --git a/tests/completions.sh b/tests/completions.sh
+index 522aa1c86..41d85159d 100644
+--- a/tests/completions.sh
++++ b/tests/completions.sh
+@@ -58,5 +58,5 @@ NIX_GET_COMPLETIONS=3 nix build --option allow-import-from | grep -- "allow-impo
+ # NIX_GET_COMPLETIONS=2 nix build --allow-import-from | grep -- "allow-import-from-derivation"
+
+ # Attr path completions
+-[[ "$(NIX_GET_COMPLETIONS=2 nix eval ./foo\#sam)" == $'attrs\n./foo#sampleOutput\t' ]]
++[[ "$(NIX_GET_COMPLETIONS=2 nix eval ./foo\#sam)" == $'filenames\n./foo#sampleOutput\t' ]]
+ [[ "$(NIX_GET_COMPLETIONS=4 nix eval --file ./foo/flake.nix outp)" == $'attrs\noutputs\t' ]]
 diff --git a/tests/search.sh b/tests/search.sh
 index 1a98f5b49..df27e1a64 100644
 --- a/tests/search.sh
