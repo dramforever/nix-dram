@@ -1,18 +1,5 @@
-From eab457f8f0ebdcece617cb3f15f095a8f2d8f81a Mon Sep 17 00:00:00 2001
-From: dramforever <dramforever@live.com>
-Date: Mon, 19 Jul 2021 22:06:31 +0800
-Subject: [PATCH] Support for default flake in new CLI
-
----
- src/libcmd/installables.cc | 71 ++++++++++++++++++++++++++++++++------
- src/libcmd/installables.hh | 10 ++++++
- src/nix/search.cc          | 27 ++++++++++++++-
- tests/flakes.sh            |  2 +-
- tests/search.sh            | 24 ++++++-------
- 5 files changed, 109 insertions(+), 25 deletions(-)
-
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 03c8f82b3..c16e2efaf 100644
+index e097f23b3..18c536aea 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -23,6 +23,23 @@
@@ -36,23 +23,23 @@ index 03c8f82b3..c16e2efaf 100644
 +    R"((?:[a-zA-Z0-9_"-][a-zA-Z0-9_".-]*(?:\^((\*)|([a-z]+(,[a-z]+)*)))?))",
 +    std::regex::ECMAScript);
 +
- void completeFlakeInputPath(
-     ref<EvalState> evalState,
-     const FlakeRef & flakeRef,
-@@ -265,15 +282,23 @@ void completeFlakeRefWithFragment(
+ MixFlakeOptions::MixFlakeOptions()
+ {
+     auto category = "Common flake-related options";
+@@ -269,15 +286,29 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
 +        bool isAttrPath = std::regex_match(prefix.begin(), prefix.end(), attrPathRegex);
          auto hash = prefix.find('#');
--        if (hash == std::string::npos) {
--            completeFlakeRef(evalState->store, prefix);
++        completionType = ctAttrs;
++
+         if (hash == std::string::npos) {
+             completeFlakeRef(evalState->store, prefix);
 -        } else {
 -            completionType = ctAttrs;
--
--            auto fragment = prefix.substr(hash + 1);
--            auto flakeRefS = std::string(prefix.substr(0, hash));
--            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
++        }
++
 +        if (isAttrPath || hash != std::string::npos) {
 +            auto fragment =
 +                isAttrPath
@@ -63,7 +50,10 @@ index 03c8f82b3..c16e2efaf 100644
 +                isAttrPath
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
 +                : std::string(prefix.substr(0, hash));
-+
+ 
+-            auto fragment = prefix.substr(hash + 1);
+-            auto flakeRefS = std::string(prefix.substr(0, hash));
+-            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
 +            // FIXME: do tilde expansion.
 +            auto flakeRef = parseFlakeRef(
 +                flakeRefS,
@@ -71,7 +61,7 @@ index 03c8f82b3..c16e2efaf 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -304,7 +329,13 @@ void completeFlakeRefWithFragment(
+@@ -308,7 +339,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -86,16 +76,7 @@ index 03c8f82b3..c16e2efaf 100644
                      }
                  }
              }
-@@ -322,6 +353,8 @@ void completeFlakeRefWithFragment(
-     } catch (Error & e) {
-         warn(e.msg());
-     }
-+
-+    completeFlakeRef(evalState->store, prefix);
- }
- 
- void completeFlakeRef(ref<Store> store, std::string_view prefix)
-@@ -341,7 +374,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -345,7 +382,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -104,7 +85,7 @@ index 03c8f82b3..c16e2efaf 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -749,6 +782,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
+@@ -755,6 +792,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
      return Installable::nixpkgsFlakeRef();
  }
  
@@ -121,7 +102,7 @@ index 03c8f82b3..c16e2efaf 100644
  std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
      ref<Store> store, std::vector<std::string> ss)
  {
-@@ -804,7 +847,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -810,7 +857,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -213,11 +194,11 @@ index bdd45cbed..2e56a69a3 100644
          // Empty search string should match all packages
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
-diff --git a/tests/flakes.sh b/tests/flakes.sh
-index 35cf4d8e7..89ad319e0 100644
---- a/tests/flakes.sh
-+++ b/tests/flakes.sh
-@@ -138,7 +138,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+diff --git a/tests/flakes/flakes.sh b/tests/flakes/flakes.sh
+index 267e2cd6f..fef337efd 100644
+--- a/tests/flakes/flakes.sh
++++ b/tests/flakes/flakes.sh
+@@ -99,7 +99,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
  # Test packages.default.
@@ -283,6 +264,3 @@ index 1a98f5b49..df27e1a64 100644
  
  ## Tests for --exclude
  (( $(nix search -f search.nix -e hello | grep -c hello) == 0 ))
--- 
-2.36.1
-

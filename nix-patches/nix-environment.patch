@@ -1,5 +1,5 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index cc009a026..a81286dfe 100644
+index d724897bb..86798b981 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
 @@ -83,6 +83,8 @@ void loadConfFile()
@@ -11,7 +11,7 @@ index cc009a026..a81286dfe 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          globalConfig.applyConfigFile(*file);
-@@ -252,6 +254,47 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+@@ -258,6 +260,47 @@ void PluginFilesSetting::set(const std::string & str, bool append)
  }
  
  
@@ -60,7 +60,7 @@ index cc009a026..a81286dfe 100644
  {
      assert(!settings.pluginFiles.pluginsLoaded);
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index feb6899cd..11421352d 100644
+index e9d721e59..ac85667dd 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
 @@ -46,6 +46,24 @@ struct PluginFilesSetting : public BaseSetting<Paths>
@@ -88,7 +88,7 @@ index feb6899cd..11421352d 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -902,6 +920,23 @@ public:
+@@ -906,6 +924,23 @@ public:
            resolves to a different location from that of the build machine. You
            can enable this setting if you are sure you're not going to do that.
          )"};
@@ -178,14 +178,14 @@ index 000000000..681768b45
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
-index e3c4ff4eb..b0a3a201e 100644
+index 5e48ceae1..eff7648ff 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -80,6 +80,7 @@ nix_tests = \
-   post-hook.sh \
+@@ -88,6 +88,7 @@ nix_tests = \
    function-trace.sh \
-   flake-local-settings.sh \
-+  environment.sh \
+   flakes/config.sh \
    fmt.sh \
++  environment.sh \
    eval-store.sh \
    why-depends.sh \
+   import-derivation.sh \
