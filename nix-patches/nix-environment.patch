@@ -1,5 +1,5 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index d724897bb..86798b981 100644
+index b7f55cae7..bf203e4d0 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
 @@ -83,6 +83,8 @@ void loadConfFile()
@@ -60,12 +60,12 @@ index d724897bb..86798b981 100644
  {
      assert(!settings.pluginFiles.pluginsLoaded);
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index e9d721e59..ac85667dd 100644
+index 274a15dd7..14322eb41 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -46,6 +46,24 @@ struct PluginFilesSetting : public BaseSetting<Paths>
-     void set(const std::string & str, bool append = false) override;
- };
+@@ -54,6 +54,24 @@ const uint32_t maxIdsPerBuild =
+     #endif
+     ;
  
 +struct EnvironmentSetting : public BaseSetting<StringMap>
 +{
@@ -88,7 +88,16 @@ index e9d721e59..ac85667dd 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -906,6 +924,23 @@ public:
+@@ -329,7 +347,7 @@ public:
+           Whether to execute builds inside cgroups.
+           This is only supported on Linux.
+ 
+-          Cgroups are required and enabled automatically for derivations 
++          Cgroups are required and enabled automatically for derivations
+           that require the `uid-range` system feature.
+ 
+           > **Warning**
+@@ -967,6 +985,23 @@ public:
            resolves to a different location from that of the build machine. You
            can enable this setting if you are sure you're not going to do that.
          )"};
@@ -178,10 +187,10 @@ index 000000000..681768b45
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
-index 5e48ceae1..eff7648ff 100644
+index 2f7f76261..7227c1a2b 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -88,6 +88,7 @@ nix_tests = \
+@@ -90,6 +90,7 @@ nix_tests = \
    function-trace.sh \
    flakes/config.sh \
    fmt.sh \
