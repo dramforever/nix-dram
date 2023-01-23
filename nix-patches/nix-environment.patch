@@ -1,5 +1,5 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index b7f55cae7..bf203e4d0 100644
+index b7f55cae7..17ba50aaf 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
 @@ -83,6 +83,8 @@ void loadConfFile()
@@ -11,7 +11,7 @@ index b7f55cae7..bf203e4d0 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          globalConfig.applyConfigFile(*file);
-@@ -258,6 +260,47 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+@@ -258,6 +260,65 @@ void PluginFilesSetting::set(const std::string & str, bool append)
  }
  
  
@@ -27,6 +27,7 @@ index b7f55cae7..bf203e4d0 100644
 +        }
 +        oldEnvironment.clear();
 +        value.clear();
++        envNames.clear();
 +        hasInherited = false;
 +    }
 +
@@ -36,6 +37,7 @@ index b7f55cae7..bf203e4d0 100644
 +        size_t pos = elem.find('=');
 +        if (pos == std::string::npos) {
 +            // name
++            envNames.insert(elem);
 +            auto envValue = getEnv(elem.c_str());
 +            if (envValue.has_value()) {
 +                newValues.insert_or_assign(elem, envValue.value());
@@ -44,7 +46,10 @@ index b7f55cae7..bf203e4d0 100644
 +            }
 +        } else {
 +            // name=value
-+            newValues.insert_or_assign(elem.substr(0, pos), elem.substr(pos + 1));
++            auto name = elem.substr(0, pos);
++            auto value = elem.substr(pos + 1);
++            envNames.insert(name);
++            newValues.insert_or_assign(name, value);
 +        }
 +    }
 +
@@ -55,20 +60,34 @@ index b7f55cae7..bf203e4d0 100644
 +    }
 +}
 +
++std::string EnvironmentSetting::to_string() const
++{
++    Strings kvstrs;
++    std::transform(envNames.begin(), envNames.end(), back_inserter(kvstrs),
++                   [this](auto name)
++                   {
++                       if (auto iter = value.find(name); iter != value.end())
++                           return name + "=" + iter->second;
++                       else
++                           return name;
++                   });
++    return concatStringsSep(" ", kvstrs);
++}
 +
  void initPlugins()
  {
      assert(!settings.pluginFiles.pluginsLoaded);
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 274a15dd7..14322eb41 100644
+index 274a15dd7..50a4be812 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -54,6 +54,24 @@ const uint32_t maxIdsPerBuild =
+@@ -54,6 +54,27 @@ const uint32_t maxIdsPerBuild =
      #endif
      ;
  
 +struct EnvironmentSetting : public BaseSetting<StringMap>
 +{
++    StringSet envNames;
 +    std::map<std::string, std::optional<std::string>> oldEnvironment;
 +    bool hasInherited = false;
 +
@@ -83,12 +102,14 @@ index 274a15dd7..14322eb41 100644
 +    }
 +
 +    void set(const std::string & str, bool append = false) override;
++
++    std::string to_string() const override;
 +};
 +
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -329,7 +347,7 @@ public:
+@@ -329,7 +350,7 @@ public:
            Whether to execute builds inside cgroups.
            This is only supported on Linux.
  
@@ -97,7 +118,7 @@ index 274a15dd7..14322eb41 100644
            that require the `uid-range` system feature.
  
            > **Warning**
-@@ -967,6 +985,23 @@ public:
+@@ -967,6 +988,23 @@ public:
            resolves to a different location from that of the build machine. You
            can enable this setting if you are sure you're not going to do that.
          )"};
@@ -145,10 +166,10 @@ index 000000000..2b0380ed7
 +}
 diff --git a/tests/environment.sh b/tests/environment.sh
 new file mode 100644
-index 000000000..681768b45
+index 000000000..08c5a6e3f
 --- /dev/null
 +++ b/tests/environment.sh
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,43 @@
 +source common.sh
 +
 +# Needs the config option 'environment' to work
@@ -184,6 +205,12 @@ index 000000000..681768b45
 +
 +varTest env_name daemon_value --environment env_name=client_value
 +env_name=client_value varTest env_name daemon_value --environment env_name
++
++[[ "$(nix show-config | grep 'environment ='
++    )" == 'environment = env_name set_in_config=daemon_value' ]]
++
++[[ "$(env_name=client_value nix show-config | grep 'environment ='
++  )" == 'environment = env_name=client_value set_in_config=daemon_value' ]]
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
