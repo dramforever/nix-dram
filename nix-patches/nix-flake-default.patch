@@ -1,8 +1,8 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 5cdd3e12c..55e7fb46a 100644
+index 60d6e9dc0..31bffaff3 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -23,6 +23,23 @@
+@@ -24,6 +24,23 @@
  
  namespace nix {
  
@@ -26,7 +26,7 @@ index 5cdd3e12c..55e7fb46a 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -273,15 +290,29 @@ void completeFlakeRefWithFragment(
+@@ -274,15 +291,29 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -39,16 +39,16 @@ index 5cdd3e12c..55e7fb46a 100644
 -        } else {
 -            completionType = ctAttrs;
 +        }
- 
--            auto fragment = prefix.substr(hash + 1);
--            auto flakeRefS = std::string(prefix.substr(0, hash));
--            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
++
 +        if (isAttrPath || hash != std::string::npos) {
 +            auto fragment =
 +                isAttrPath
 +                ? prefix
 +                : prefix.substr(hash + 1);
-+
+ 
+-            auto fragment = prefix.substr(hash + 1);
+-            auto flakeRefS = std::string(prefix.substr(0, hash));
+-            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
 +            auto flakeRefS =
 +                isAttrPath
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
@@ -61,7 +61,7 @@ index 5cdd3e12c..55e7fb46a 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -312,7 +343,13 @@ void completeFlakeRefWithFragment(
+@@ -313,7 +344,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -76,7 +76,7 @@ index 5cdd3e12c..55e7fb46a 100644
                      }
                  }
              }
-@@ -349,7 +386,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -350,7 +387,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -85,40 +85,23 @@ index 5cdd3e12c..55e7fb46a 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -771,6 +808,16 @@ FlakeRef InstallableFlake::nixpkgsFlakeRef() const
-     return Installable::nixpkgsFlakeRef();
- }
- 
-+static std::tuple<FlakeRef, std::string, OutputsSpec> parseOnlyAttrPath(
-+    const std::string &s) {
-+    auto [fragment, outputsSpec] = parseOutputsSpec(s);
-+    return {
-+        parseFlakeRef(installablesSettings.getDefaultFlake(s), {}),
-+        fragment,
-+        outputsSpec
-+    };
-+}
-+
- std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
-     ref<Store> store, std::vector<std::string> ss)
- {
-@@ -842,7 +889,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -855,7 +892,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
--                auto [flakeRef, fragment, outputsSpec] = parseFlakeRefWithFragmentAndOutputsSpec(s, absPath("."));
-+                bool isAttrPath = std::regex_match(s, attrPathRegex);
+-                auto [flakeRef, fragment] = parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
++                bool isAttrPath = std::regex_match(std::string { prefix }, attrPathRegex);
 +
-+                auto [flakeRef, fragment, outputsSpec] =
++                auto [flakeRef, fragment] =
 +                    isAttrPath
-+                    ? parseOnlyAttrPath(s)
-+                    : parseFlakeRefWithFragmentAndOutputsSpec(s, absPath("."));
++                    ? std::pair { parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
++                    : parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
 +
                  result.push_back(std::make_shared<InstallableFlake>(
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 02ea351d3..4efb87228 100644
+index 3d12639b0..b566546a7 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -13,6 +13,16 @@

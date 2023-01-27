@@ -1,5 +1,5 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index b7f55cae7..17ba50aaf 100644
+index 130c5b670..11a5ce0e1 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
 @@ -83,6 +83,8 @@ void loadConfFile()
@@ -78,7 +78,7 @@ index b7f55cae7..17ba50aaf 100644
  {
      assert(!settings.pluginFiles.pluginsLoaded);
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 274a15dd7..50a4be812 100644
+index 7111def92..8431d71cd 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
 @@ -54,6 +54,27 @@ const uint32_t maxIdsPerBuild =
@@ -109,16 +109,7 @@ index 274a15dd7..50a4be812 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -329,7 +350,7 @@ public:
-           Whether to execute builds inside cgroups.
-           This is only supported on Linux.
- 
--          Cgroups are required and enabled automatically for derivations 
-+          Cgroups are required and enabled automatically for derivations
-           that require the `uid-range` system feature.
- 
-           > **Warning**
-@@ -967,6 +988,23 @@ public:
+@@ -970,6 +991,23 @@ public:
            resolves to a different location from that of the build machine. You
            can enable this setting if you are sure you're not going to do that.
          )"};
@@ -214,14 +205,14 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
-index 2f7f76261..7227c1a2b 100644
+index 5ac1ede32..296de851e 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -90,6 +90,7 @@ nix_tests = \
+@@ -91,6 +91,7 @@ nix_tests = \
    function-trace.sh \
    flakes/config.sh \
    fmt.sh \
 +  environment.sh \
    eval-store.sh \
    why-depends.sh \
-   import-derivation.sh \
+   ca/why-depends.sh \
