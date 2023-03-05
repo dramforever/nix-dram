@@ -1,4 +1,4 @@
-name: "Check build & publish to cachix"
+name: "build"
 
 on:
   push:

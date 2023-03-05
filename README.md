@@ -1,6 +1,6 @@
 # `nix-dram`
 
-![`nix flake check` status](https://github.com/dramforever/nix-dram/workflows/nix%20flake%20check/badge.svg)
+![Build status](https://github.com/dramforever/nix-dram/workflows/check.yml/badge.svg)
 
 *Nix with a modified frontend, by dramforever*
 
