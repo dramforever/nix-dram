@@ -1,8 +1,8 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 60d6e9dc0..31bffaff3 100644
+index 00c6f9516..d4d65961e 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -24,6 +24,23 @@
+@@ -27,6 +27,23 @@
  
  namespace nix {
  
@@ -26,7 +26,7 @@ index 60d6e9dc0..31bffaff3 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -274,15 +291,29 @@ void completeFlakeRefWithFragment(
+@@ -271,15 +288,29 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -61,7 +61,7 @@ index 60d6e9dc0..31bffaff3 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -313,7 +344,13 @@ void completeFlakeRefWithFragment(
+@@ -310,7 +341,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -76,7 +76,7 @@ index 60d6e9dc0..31bffaff3 100644
                      }
                  }
              }
-@@ -350,7 +387,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -347,7 +384,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -85,7 +85,7 @@ index 60d6e9dc0..31bffaff3 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -855,7 +892,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -479,7 +516,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -101,7 +101,7 @@ index 60d6e9dc0..31bffaff3 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 3d12639b0..b566546a7 100644
+index be77fdc81..8d0b8432b 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -13,6 +13,16 @@
@@ -122,7 +122,7 @@ index 3d12639b0..b566546a7 100644
  struct SourceExprCommand;
  
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index d2a31607d..d8402e1cd 100644
+index 4fa1e7837..e1fc9531e 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -22,8 +22,9 @@ std::string wrap(std::string prefix, std::string s)
