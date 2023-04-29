@@ -53,7 +53,7 @@
         nix-nar-listing =
           final.haskellPackages.callPackage ./nix-nar-listing {};
 
-        nix-dram = final.nixUnstable.overrideAttrs (old: {
+        make-nix-dram = { nix }: nix.overrideAttrs (old: {
           name = "nix-dram-" + old.version;
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
@@ -62,7 +62,11 @@
           ];
         });
 
-        nix-dram-progress = final.nixUnstable.overrideAttrs (old: {
+        nix-dram = final.make-nix-dram {
+          nix = final.nixUnstable;
+        };
+
+        nix-dram-progress = final.callPackage ({ nix }: nix.overrideAttrs (old: {
           name = "nix-dram-" + old.version;
           patches = (old.patches or []) ++ [
             ./nix-patches/nix-flake-default.patch
@@ -74,7 +78,9 @@
               sha256 = "sha256-vR7kGQMLHcf2qnaycyrv8h9M5iZjIC+GxD9kfqM3lzQ=";
             })
           ];
-        });
+        })) {
+          nix = final.nixUnstable;
+        };
 
         nix-search = final.writeShellScriptBin "nix-search" ''
           ${final.nix-dram}/bin/nix search --json "$@" | ${final.nix-search-pretty}/bin/nix-search-pretty
