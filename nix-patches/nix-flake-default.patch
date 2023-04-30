@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 00c6f9516..d4d65961e 100644
+index 32ae46d9f..a78030a8e 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -27,6 +27,23 @@
@@ -26,7 +26,7 @@ index 00c6f9516..d4d65961e 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -271,15 +288,29 @@ void completeFlakeRefWithFragment(
+@@ -293,15 +310,29 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -39,16 +39,16 @@ index 00c6f9516..d4d65961e 100644
 -        } else {
 -            completionType = ctAttrs;
 +        }
-+
+ 
+-            auto fragment = prefix.substr(hash + 1);
+-            auto flakeRefS = std::string(prefix.substr(0, hash));
+-            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
 +        if (isAttrPath || hash != std::string::npos) {
 +            auto fragment =
 +                isAttrPath
 +                ? prefix
 +                : prefix.substr(hash + 1);
- 
--            auto fragment = prefix.substr(hash + 1);
--            auto flakeRefS = std::string(prefix.substr(0, hash));
--            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
++
 +            auto flakeRefS =
 +                isAttrPath
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
@@ -61,7 +61,7 @@ index 00c6f9516..d4d65961e 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -310,7 +341,13 @@ void completeFlakeRefWithFragment(
+@@ -332,7 +363,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -76,7 +76,7 @@ index 00c6f9516..d4d65961e 100644
                      }
                  }
              }
-@@ -347,7 +384,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -369,7 +406,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -85,26 +85,44 @@ index 00c6f9516..d4d65961e 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -479,7 +516,13 @@ std::vector<std::shared_ptr<Installable>> SourceExprCommand::parseInstallables(
+@@ -427,6 +464,17 @@ ref<eval_cache::EvalCache> openEvalCache(
+         });
+ }
+ 
++static std::tuple<FlakeRef, std::string, ExtendedOutputsSpec> parseOnlyAttrPath(
++    const std::string &s)
++{
++    auto [fragment, outputsSpec] = ExtendedOutputsSpec::parse(s);
++    return {
++        parseFlakeRef(installablesSettings.getDefaultFlake(s), {}),
++        std::string(fragment),
++        outputsSpec
++    };
++}
++
+ Installables SourceExprCommand::parseInstallables(
+     ref<Store> store, std::vector<std::string> ss)
+ {
+@@ -484,7 +532,13 @@ Installables SourceExprCommand::parseInstallables(
              }
  
              try {
 -                auto [flakeRef, fragment] = parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
-+                bool isAttrPath = std::regex_match(std::string { prefix }, attrPathRegex);
++                bool isAttrPath = std::regex_match(s, attrPathRegex);
 +
-+                auto [flakeRef, fragment] =
++                auto [flakeRef, fragment, outputsSpec] =
 +                    isAttrPath
-+                    ? std::pair { parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
-+                    : parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
++                    ? parseOnlyAttrPath(s)
++                    : parseFlakeRefWithFragmentAndExtendedOutputsSpec(s, absPath("."));
 +
-                 result.push_back(std::make_shared<InstallableFlake>(
+                 result.push_back(make_ref<InstallableFlake>(
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index be77fdc81..8d0b8432b 100644
+index 42d6c7c7c..f9d1a37c8 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
-@@ -13,6 +13,16 @@
+@@ -12,6 +12,16 @@
  
  namespace nix {
  
@@ -119,24 +137,24 @@ index be77fdc81..8d0b8432b 100644
 +extern InstallablesSettings installablesSettings;
 +
  struct DrvInfo;
- struct SourceExprCommand;
  
+ enum class Realise {
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 4fa1e7837..e1fc9531e 100644
+index 95cde5003..4535ee263 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -22,8 +22,9 @@ std::string wrap(std::string prefix, std::string s)
+@@ -24,8 +24,9 @@ std::string wrap(std::string prefix, std::string s)
      return concatStrings(prefix, s, ANSI_NORMAL);
  }
  
--struct CmdSearch : InstallableCommand, MixJSON
+-struct CmdSearch : InstallableValueCommand, MixJSON
 +struct CmdSearch : SourceExprCommand, MixJSON
  {
 +    std::string _installable{installablesSettings.defaultFlake};
      std::vector<std::string> res;
      std::vector<std::string> excludeRes;
  
-@@ -39,6 +40,24 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -41,6 +42,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
                  excludeRes.push_back(s);
              }},
          });
@@ -161,9 +179,12 @@ index 4fa1e7837..e1fc9531e 100644
      }
  
      std::string description() override
-@@ -63,9 +82,15 @@ struct CmdSearch : InstallableCommand, MixJSON
+@@ -63,11 +82,17 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+         };
+     }
  
-     void run(ref<Store> store) override
+-    void run(ref<Store> store, ref<InstallableValue> installable) override
++    void run(ref<Store> store) override
      {
 +        if (_installable == "" && ! file && ! expr) {
 +            throw UsageError("nothing to search from, set 'default-flake' option or specify one of '--installable', '--file', '--expr'");
@@ -172,16 +193,16 @@ index 4fa1e7837..e1fc9531e 100644
          settings.readOnlyMode = true;
          evalSettings.enableImportFromDerivation.setDefault(false);
  
-+        auto installable = parseInstallable(store, (file || expr) ? "" : _installable);
++        auto installable = InstallableValue::require(parseInstallable(store, (file || expr) ? "" : _installable));
 +
          // Empty search string should match all packages
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
 diff --git a/tests/flakes/flakes.sh b/tests/flakes/flakes.sh
-index 07f1e6698..ff9a9f820 100644
+index f2e216435..086f502dd 100644
 --- a/tests/flakes/flakes.sh
 +++ b/tests/flakes/flakes.sh
-@@ -105,7 +105,7 @@ nix build -o $TEST_ROOT/result flake1#foo
+@@ -107,7 +107,7 @@ nix build -o $TEST_ROOT/result flake1#foo
  [[ -e $TEST_ROOT/result/hello ]]
  
  # Test packages.default.
@@ -191,7 +212,7 @@ index 07f1e6698..ff9a9f820 100644
  
  nix build -o $TEST_ROOT/result $flake1Dir
 diff --git a/tests/search.sh b/tests/search.sh
-index 1a98f5b49..df27e1a64 100644
+index 8742f8736..c96681dda 100644
 --- a/tests/search.sh
 +++ b/tests/search.sh
 @@ -3,40 +3,40 @@ source common.sh
@@ -220,12 +241,12 @@ index 1a98f5b49..df27e1a64 100644
  ## Search expressions
  
  # Check that empty search string matches all
--nix search -f search.nix '' |grep -q foo
--nix search -f search.nix '' |grep -q bar
--nix search -f search.nix '' |grep -q hello
-+nix search -f search.nix |grep -q foo
-+nix search -f search.nix |grep -q bar
-+nix search -f search.nix |grep -q hello
+-nix search -f search.nix '' |grepQuiet foo
+-nix search -f search.nix '' |grepQuiet bar
+-nix search -f search.nix '' |grepQuiet hello
++nix search -f search.nix |grepQuiet foo
++nix search -f search.nix |grepQuiet bar
++nix search -f search.nix |grepQuiet hello
  
  ## Tests for multiple regex/match highlighting
  
