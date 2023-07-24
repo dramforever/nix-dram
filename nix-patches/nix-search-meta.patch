@@ -1,5 +1,5 @@
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c92ed1663..95cde5003 100644
+index c92ed1663..8371bbd20 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -9,6 +9,8 @@
@@ -15,7 +15,7 @@ index c92ed1663..95cde5003 100644
                      {
                          results++;
                          if (json) {
-+                            PathSet context;
++                            NixStringContext context;
 +
                              (*jsonOut)[attrPath2] = {
                                  {"pname", name.name},

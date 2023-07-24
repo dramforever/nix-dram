@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 32ae46d9f..a78030a8e 100644
+index a2b882355..598cf7dca 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -27,6 +27,23 @@
@@ -39,16 +39,16 @@ index 32ae46d9f..a78030a8e 100644
 -        } else {
 -            completionType = ctAttrs;
 +        }
- 
--            auto fragment = prefix.substr(hash + 1);
--            auto flakeRefS = std::string(prefix.substr(0, hash));
--            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
++
 +        if (isAttrPath || hash != std::string::npos) {
 +            auto fragment =
 +                isAttrPath
 +                ? prefix
 +                : prefix.substr(hash + 1);
-+
+ 
+-            auto fragment = prefix.substr(hash + 1);
+-            auto flakeRefS = std::string(prefix.substr(0, hash));
+-            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
 +            auto flakeRefS =
 +                isAttrPath
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
@@ -85,35 +85,17 @@ index 32ae46d9f..a78030a8e 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions->add(from);
-@@ -427,6 +464,17 @@ ref<eval_cache::EvalCache> openEvalCache(
-         });
- }
- 
-+static std::tuple<FlakeRef, std::string, ExtendedOutputsSpec> parseOnlyAttrPath(
-+    const std::string &s)
-+{
-+    auto [fragment, outputsSpec] = ExtendedOutputsSpec::parse(s);
-+    return {
-+        parseFlakeRef(installablesSettings.getDefaultFlake(s), {}),
-+        std::string(fragment),
-+        outputsSpec
-+    };
-+}
-+
- Installables SourceExprCommand::parseInstallables(
-     ref<Store> store, std::vector<std::string> ss)
- {
-@@ -484,7 +532,13 @@ Installables SourceExprCommand::parseInstallables(
+@@ -484,7 +521,13 @@ Installables SourceExprCommand::parseInstallables(
              }
  
              try {
 -                auto [flakeRef, fragment] = parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
-+                bool isAttrPath = std::regex_match(s, attrPathRegex);
++                bool isAttrPath = std::regex_match(std::string { prefix }, attrPathRegex);
 +
-+                auto [flakeRef, fragment, outputsSpec] =
++                auto [flakeRef, fragment] =
 +                    isAttrPath
-+                    ? parseOnlyAttrPath(s)
-+                    : parseFlakeRefWithFragmentAndExtendedOutputsSpec(s, absPath("."));
++                    ? std::pair { parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
++                    : parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
 +
                  result.push_back(make_ref<InstallableFlake>(
                          this,
@@ -140,10 +122,10 @@ index 42d6c7c7c..f9d1a37c8 100644
  
  enum class Realise {
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 95cde5003..4535ee263 100644
+index c92ed1663..b9f30f8da 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -24,8 +24,9 @@ std::string wrap(std::string prefix, std::string s)
+@@ -22,8 +22,9 @@ std::string wrap(std::string prefix, std::string s)
      return concatStrings(prefix, s, ANSI_NORMAL);
  }
  
@@ -154,7 +136,7 @@ index 95cde5003..4535ee263 100644
      std::vector<std::string> res;
      std::vector<std::string> excludeRes;
  
-@@ -41,6 +42,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -39,6 +40,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
                  excludeRes.push_back(s);
              }},
          });
@@ -179,7 +161,7 @@ index 95cde5003..4535ee263 100644
      }
  
      std::string description() override
-@@ -63,11 +82,17 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -61,11 +80,18 @@ struct CmdSearch : InstallableValueCommand, MixJSON
          };
      }
  
@@ -193,7 +175,8 @@ index 95cde5003..4535ee263 100644
          settings.readOnlyMode = true;
          evalSettings.enableImportFromDerivation.setDefault(false);
  
-+        auto installable = InstallableValue::require(parseInstallable(store, (file || expr) ? "" : _installable));
++        auto installable = InstallableValue::require(
++            parseInstallable(store, (file || expr) ? "" : _installable));
 +
          // Empty search string should match all packages
          // Use "^" here instead of ".*" due to differences in resulting highlighting
@@ -212,7 +195,7 @@ index f2e216435..086f502dd 100644
  
  nix build -o $TEST_ROOT/result $flake1Dir
 diff --git a/tests/search.sh b/tests/search.sh
-index 8742f8736..c96681dda 100644
+index 8742f8736..df27e1a64 100644
 --- a/tests/search.sh
 +++ b/tests/search.sh
 @@ -3,40 +3,40 @@ source common.sh
@@ -244,9 +227,9 @@ index 8742f8736..c96681dda 100644
 -nix search -f search.nix '' |grepQuiet foo
 -nix search -f search.nix '' |grepQuiet bar
 -nix search -f search.nix '' |grepQuiet hello
-+nix search -f search.nix |grepQuiet foo
-+nix search -f search.nix |grepQuiet bar
-+nix search -f search.nix |grepQuiet hello
++nix search -f search.nix |grep -q foo
++nix search -f search.nix |grep -q bar
++nix search -f search.nix |grep -q hello
  
  ## Tests for multiple regex/match highlighting
  

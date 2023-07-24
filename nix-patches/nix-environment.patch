@@ -1,8 +1,8 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 823b4af74..acec07a70 100644
+index 32e9a6ea9..d16c2b738 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -78,6 +78,8 @@ void loadConfFile()
+@@ -88,6 +88,8 @@ void loadConfFile()
         ~/.nix/nix.conf or the command line. */
      globalConfig.resetOverridden();
  
@@ -11,11 +11,11 @@ index 823b4af74..acec07a70 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          globalConfig.applyConfigFile(*file);
-@@ -248,6 +250,65 @@ void PluginFilesSetting::set(const std::string & str, bool append)
+@@ -257,6 +259,75 @@ Paths PluginFilesSetting::parse(const std::string & str) const
+     return BaseSetting<Paths>::parse(str);
  }
  
- 
-+void EnvironmentSetting::set(const std::string & str, bool append)
++void EnvironmentSetting::appendOrSet(Strings && newValue, bool append)
 +{
 +    if (! append) {
 +        for (auto & [name, oldValue] : oldEnvironment) {
@@ -27,81 +27,90 @@ index 823b4af74..acec07a70 100644
 +        }
 +        oldEnvironment.clear();
 +        value.clear();
-+        envNames.clear();
 +        hasInherited = false;
 +    }
 +
-+    StringMap newValues;
++    std::map<std::string, std::optional<std::string>> result;
 +
-+    for (auto & elem : tokenizeString<Strings>(str)) {
++    for (auto & elem : newValue) {
 +        size_t pos = elem.find('=');
 +        if (pos == std::string::npos) {
 +            // name
-+            envNames.insert(elem);
 +            auto envValue = getEnv(elem.c_str());
 +            if (envValue.has_value()) {
-+                newValues.insert_or_assign(elem, envValue.value());
++                result.insert_or_assign(elem, std::optional { envValue.value() });
 +                hasInherited = true;
 +                overridden = true;
++            } else {
++                result.insert_or_assign(elem, std::nullopt);
 +            }
 +        } else {
 +            // name=value
 +            auto name = elem.substr(0, pos);
 +            auto value = elem.substr(pos + 1);
-+            envNames.insert(name);
-+            newValues.insert_or_assign(name, value);
++            result.insert_or_assign(name, std::optional { value });
 +        }
 +    }
 +
-+    for (auto & [name, newValue] : newValues) {
++    for (auto i = value.begin(); i != value.end(); i ++) {
++        size_t pos = i->find('=');
++        std::string name = (pos == std::string::npos) ? *i : i->substr(0, pos);
++        if (result.count(name))
++            value.erase(i);
++    }
++
++    for (auto & [name, val] : result) {
 +        oldEnvironment.emplace(name, getEnv(name));
-+        setenv(name.c_str(), newValue.c_str(), 1);
-+        value.insert_or_assign(name, newValue);
++        if (val.has_value()) {
++            setenv(name.c_str(), val.value().c_str(), 1);
++            value.push_back(fmt("%1%=%2%", name, val.value()));
++        } else {
++            value.push_back(name);
++        }
 +    }
 +}
 +
 +std::string EnvironmentSetting::to_string() const
 +{
-+    Strings kvstrs;
-+    std::transform(envNames.begin(), envNames.end(), back_inserter(kvstrs),
-+                   [this](auto name)
-+                   {
-+                       if (auto iter = value.find(name); iter != value.end())
-+                           return name + "=" + iter->second;
-+                       else
-+                           return name;
-+                   });
-+    return concatStringsSep(" ", kvstrs);
++    return BaseSetting<Strings>::to_string();
++    // Strings kvstrs;
++    // std::transform(envNames.begin(), envNames.end(), back_inserter(kvstrs),
++    //                [this](auto name)
++    //                {
++    //                    if (auto iter = value.find(name); iter != value.end())
++    //                        return name + "=" + iter->second;
++    //                    else
++    //                        return name;
++    //                });
++    // return concatStringsSep(" ", kvstrs);
 +}
-+
+ 
  void initPlugins()
  {
-     assert(!settings.pluginFiles.pluginsLoaded);
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 63c7389da..b889b6db7 100644
+index 31dfe5b4e..95fb8d97e 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -54,6 +54,27 @@ const uint32_t maxIdsPerBuild =
+@@ -54,6 +54,26 @@ const uint32_t maxIdsPerBuild =
      #endif
      ;
  
-+struct EnvironmentSetting : public BaseSetting<StringMap>
++struct EnvironmentSetting : public BaseSetting<Strings>
 +{
-+    StringSet envNames;
 +    std::map<std::string, std::optional<std::string>> oldEnvironment;
 +    bool hasInherited = false;
 +
 +    EnvironmentSetting(Config * options,
-+        const StringMap & def,
++        const Strings & def,
 +        const std::string & name,
 +        const std::string & description,
 +        const std::set<std::string> & aliases = {})
-+        : BaseSetting<StringMap>(def, true, name, description, aliases)
++        : BaseSetting<Strings>(def, true, name, description, aliases)
 +    {
 +        options->addSetting(this);
 +    }
 +
-+    void set(const std::string & str, bool append = false) override;
++    void appendOrSet(Strings && newValue, bool append) override;
 +
 +    std::string to_string() const override;
 +};
@@ -109,7 +118,7 @@ index 63c7389da..b889b6db7 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -1013,6 +1034,23 @@ public:
+@@ -997,6 +1017,23 @@ public:
            | `~/.nix-channels` | `$XDG_STATE_HOME/nix/channels` |
          )"
      };
@@ -205,10 +214,10 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/local.mk b/tests/local.mk
-index 6cb466e8e..3d95f4ca2 100644
+index 9e340e2e2..6017f7a95 100644
 --- a/tests/local.mk
 +++ b/tests/local.mk
-@@ -99,6 +99,7 @@ nix_tests = \
+@@ -104,6 +104,7 @@ nix_tests = \
    function-trace.sh \
    flakes/config.sh \
    fmt.sh \
