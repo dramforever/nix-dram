@@ -1,5 +1,5 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 32e9a6ea9..d16c2b738 100644
+index 32e9a6ea9..c387c6e0f 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
 @@ -88,6 +88,8 @@ void loadConfFile()
@@ -11,7 +11,7 @@ index 32e9a6ea9..d16c2b738 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          globalConfig.applyConfigFile(*file);
-@@ -257,6 +259,75 @@ Paths PluginFilesSetting::parse(const std::string & str) const
+@@ -257,6 +259,60 @@ Paths PluginFilesSetting::parse(const std::string & str) const
      return BaseSetting<Paths>::parse(str);
  }
  
@@ -69,29 +69,14 @@ index 32e9a6ea9..d16c2b738 100644
 +        }
 +    }
 +}
-+
-+std::string EnvironmentSetting::to_string() const
-+{
-+    return BaseSetting<Strings>::to_string();
-+    // Strings kvstrs;
-+    // std::transform(envNames.begin(), envNames.end(), back_inserter(kvstrs),
-+    //                [this](auto name)
-+    //                {
-+    //                    if (auto iter = value.find(name); iter != value.end())
-+    //                        return name + "=" + iter->second;
-+    //                    else
-+    //                        return name;
-+    //                });
-+    // return concatStringsSep(" ", kvstrs);
-+}
  
  void initPlugins()
  {
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 31dfe5b4e..95fb8d97e 100644
+index 31dfe5b4e..2f941b0ac 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -54,6 +54,26 @@ const uint32_t maxIdsPerBuild =
+@@ -54,6 +54,24 @@ const uint32_t maxIdsPerBuild =
      #endif
      ;
  
@@ -111,14 +96,12 @@ index 31dfe5b4e..95fb8d97e 100644
 +    }
 +
 +    void appendOrSet(Strings && newValue, bool append) override;
-+
-+    std::string to_string() const override;
 +};
 +
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -997,6 +1017,23 @@ public:
+@@ -997,6 +1015,23 @@ public:
            | `~/.nix-channels` | `$XDG_STATE_HOME/nix/channels` |
          )"
      };
