@@ -1,8 +1,8 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 32e9a6ea9..c387c6e0f 100644
+index cc416a4d6..a3e348a21 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -88,6 +88,8 @@ void loadConfFile()
+@@ -122,6 +122,8 @@ void loadConfFile()
         ~/.nix/nix.conf or the command line. */
      globalConfig.resetOverridden();
  
@@ -11,11 +11,11 @@ index 32e9a6ea9..c387c6e0f 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          globalConfig.applyConfigFile(*file);
-@@ -257,6 +259,60 @@ Paths PluginFilesSetting::parse(const std::string & str) const
+@@ -319,6 +321,60 @@ Paths PluginFilesSetting::parse(const std::string & str) const
      return BaseSetting<Paths>::parse(str);
  }
  
-+void EnvironmentSetting::appendOrSet(Strings && newValue, bool append)
++void EnvironmentSetting::appendOrSet(Strings newValue, bool append)
 +{
 +    if (! append) {
 +        for (auto & [name, oldValue] : oldEnvironment) {
@@ -73,10 +73,10 @@ index 32e9a6ea9..c387c6e0f 100644
  void initPlugins()
  {
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 31dfe5b4e..2f941b0ac 100644
+index 27caf42c4..c9819e1dc 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -54,6 +54,24 @@ const uint32_t maxIdsPerBuild =
+@@ -55,6 +55,24 @@ const uint32_t maxIdsPerBuild =
      #endif
      ;
  
@@ -95,14 +95,14 @@ index 31dfe5b4e..2f941b0ac 100644
 +        options->addSetting(this);
 +    }
 +
-+    void appendOrSet(Strings && newValue, bool append) override;
++    void appendOrSet(Strings newValue, bool append) override;
 +};
 +
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -997,6 +1015,23 @@ public:
-           | `~/.nix-channels` | `$XDG_STATE_HOME/nix/channels` |
+@@ -1094,6 +1112,23 @@ public:
+           store paths of the latest Nix release.
          )"
      };
 +
@@ -125,11 +125,11 @@ index 31dfe5b4e..2f941b0ac 100644
  };
  
  
-diff --git a/tests/environment.nix b/tests/environment.nix
+diff --git a/tests/functional/environment.nix b/tests/functional/environment.nix
 new file mode 100644
 index 000000000..2b0380ed7
 --- /dev/null
-+++ b/tests/environment.nix
++++ b/tests/functional/environment.nix
 @@ -0,0 +1,16 @@
 +{ var, value }:
 +
@@ -147,11 +147,11 @@ index 000000000..2b0380ed7
 +  outputHashAlgo = "sha256";
 +  outputHash = builtins.hashString "sha256" value;
 +}
-diff --git a/tests/environment.sh b/tests/environment.sh
+diff --git a/tests/functional/environment.sh b/tests/functional/environment.sh
 new file mode 100644
 index 000000000..08c5a6e3f
 --- /dev/null
-+++ b/tests/environment.sh
++++ b/tests/functional/environment.sh
 @@ -0,0 +1,43 @@
 +source common.sh
 +
@@ -196,15 +196,15 @@ index 000000000..08c5a6e3f
 +  )" == 'environment = env_name=client_value set_in_config=daemon_value' ]]
 +
 +killDaemon
-diff --git a/tests/local.mk b/tests/local.mk
-index 9e340e2e2..6017f7a95 100644
---- a/tests/local.mk
-+++ b/tests/local.mk
-@@ -104,6 +104,7 @@ nix_tests = \
+diff --git a/tests/functional/local.mk b/tests/functional/local.mk
+index 21dabca88..ccd492e8f 100644
+--- a/tests/functional/local.mk
++++ b/tests/functional/local.mk
+@@ -97,6 +97,7 @@ nix_tests = \
    function-trace.sh \
    flakes/config.sh \
    fmt.sh \
 +  environment.sh \
    eval-store.sh \
    why-depends.sh \
-   ca/why-depends.sh \
+   derivation-json.sh \

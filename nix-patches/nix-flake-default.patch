@@ -1,10 +1,10 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index a2b882355..598cf7dca 100644
+index 6e670efea..84fd51a88 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -27,6 +27,23 @@
- 
- namespace nix {
+@@ -43,6 +43,23 @@ void completeFlakeInputPath(
+     }
+ }
  
 +std::string InstallablesSettings::getDefaultFlake(std::string_view url)
 +{
@@ -26,33 +26,40 @@ index a2b882355..598cf7dca 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -293,15 +310,29 @@ void completeFlakeRefWithFragment(
+@@ -322,22 +339,36 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
 +        bool isAttrPath = std::regex_match(prefix.begin(), prefix.end(), attrPathRegex);
          auto hash = prefix.find('#');
-+        completionType = ctAttrs;
 +
          if (hash == std::string::npos) {
-             completeFlakeRef(evalState->store, prefix);
+             completeFlakeRef(completions, evalState->store, prefix);
 -        } else {
--            completionType = ctAttrs;
 +        }
 +
 +        if (isAttrPath || hash != std::string::npos) {
+             completions.setType(AddCompletions::Type::Attrs);
+ 
+-            auto fragment = prefix.substr(hash + 1);
 +            auto fragment =
 +                isAttrPath
 +                ? prefix
 +                : prefix.substr(hash + 1);
- 
--            auto fragment = prefix.substr(hash + 1);
++
+             std::string prefixRoot = "";
+             if (fragment.starts_with(".")){
+                 fragment = fragment.substr(1);
+                 prefixRoot = ".";
+             }
 -            auto flakeRefS = std::string(prefix.substr(0, hash));
+ 
+-            // TODO: ideally this would use the command base directory instead of assuming ".".
 -            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
 +            auto flakeRefS =
 +                isAttrPath
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
-+                : std::string(prefix.substr(0, hash));
++                : expandTilde(std::string(prefix.substr(0, hash)));
 +
 +            // FIXME: do tilde expansion.
 +            auto flakeRef = parseFlakeRef(
@@ -61,47 +68,55 @@ index a2b882355..598cf7dca 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -332,7 +363,13 @@ void completeFlakeRefWithFragment(
+@@ -347,6 +378,7 @@ void completeFlakeRefWithFragment(
+             if (prefixRoot == "."){
+                 attrPathPrefixes.clear();
+             }
++
+             /* Complete 'fragment' relative to all the
+                attrpath prefixes as well as the root of the
+                flake. */
+@@ -371,7 +403,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
--                        completions->add(flakeRefS + "#" + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
+-                        completions.add(flakeRefS + "#" + prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
 +
-+                        std::string resolvedAttrPath2 = concatStringsSep(".", evalState->symbols.resolve(attrPath2));
++                        std::string resolvedAttrPath2 = prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2));
 +
 +                        if (isAttrPath)
-+                            completions->add(resolvedAttrPath2);
++                            completions.add(resolvedAttrPath2);
 +                        else
-+                            completions->add(flakeRefS + "#" + resolvedAttrPath2);
++                            completions.add(flakeRefS + "#" + resolvedAttrPath2);
                      }
                  }
              }
-@@ -369,7 +406,7 @@ void completeFlakeRef(ref<Store> store, std::string_view prefix)
+@@ -408,7 +446,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
--                    completions->add(from2);
-+                    completions->add(from2 + "#");
+-                    completions.add(from2);
++                    completions.add(from2 + "#");
              } else {
                  if (hasPrefix(from, prefix))
-                     completions->add(from);
-@@ -484,7 +521,13 @@ Installables SourceExprCommand::parseInstallables(
+                     completions.add(from);
+@@ -525,7 +563,13 @@ Installables SourceExprCommand::parseInstallables(
              }
  
              try {
--                auto [flakeRef, fragment] = parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
+-                auto [flakeRef, fragment] = parseFlakeRefWithFragment(std::string { prefix }, absPath(getCommandBaseDir()));
 +                bool isAttrPath = std::regex_match(std::string { prefix }, attrPathRegex);
 +
 +                auto [flakeRef, fragment] =
 +                    isAttrPath
 +                    ? std::pair { parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
-+                    : parseFlakeRefWithFragment(std::string { prefix }, absPath("."));
++                    : parseFlakeRefWithFragment(std::string { prefix }, absPath(getCommandBaseDir()));
 +
                  result.push_back(make_ref<InstallableFlake>(
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index 42d6c7c7c..f9d1a37c8 100644
+index e087f935c..79e20ebb7 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
 @@ -12,6 +12,16 @@
@@ -122,10 +137,10 @@ index 42d6c7c7c..f9d1a37c8 100644
  
  enum class Realise {
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c92ed1663..b9f30f8da 100644
+index ef0139e09..3760a97cb 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -22,8 +22,9 @@ std::string wrap(std::string prefix, std::string s)
+@@ -23,8 +23,9 @@ std::string wrap(std::string prefix, std::string s)
      return concatStrings(prefix, s, ANSI_NORMAL);
  }
  
@@ -136,7 +151,7 @@ index c92ed1663..b9f30f8da 100644
      std::vector<std::string> res;
      std::vector<std::string> excludeRes;
  
-@@ -39,6 +40,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -40,6 +41,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
                  excludeRes.push_back(s);
              }},
          });
@@ -161,7 +176,7 @@ index c92ed1663..b9f30f8da 100644
      }
  
      std::string description() override
-@@ -61,11 +80,18 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -62,11 +81,18 @@ struct CmdSearch : InstallableValueCommand, MixJSON
          };
      }
  
@@ -181,23 +196,10 @@ index c92ed1663..b9f30f8da 100644
          // Empty search string should match all packages
          // Use "^" here instead of ".*" due to differences in resulting highlighting
          // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
-diff --git a/tests/flakes/flakes.sh b/tests/flakes/flakes.sh
-index f2e216435..086f502dd 100644
---- a/tests/flakes/flakes.sh
-+++ b/tests/flakes/flakes.sh
-@@ -107,7 +107,7 @@ nix build -o $TEST_ROOT/result flake1#foo
- [[ -e $TEST_ROOT/result/hello ]]
- 
- # Test packages.default.
--nix build -o $TEST_ROOT/result flake1
-+nix build -o $TEST_ROOT/result flake1#
- [[ -e $TEST_ROOT/result/hello ]]
- 
- nix build -o $TEST_ROOT/result $flake1Dir
-diff --git a/tests/search.sh b/tests/search.sh
+diff --git a/tests/functional/search.sh b/tests/functional/search.sh
 index 8742f8736..df27e1a64 100644
---- a/tests/search.sh
-+++ b/tests/search.sh
+--- a/tests/functional/search.sh
++++ b/tests/functional/search.sh
 @@ -3,40 +3,40 @@ source common.sh
  clearStore
  clearCache
