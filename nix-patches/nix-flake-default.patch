@@ -1,8 +1,57 @@
+diff --git a/flake.lock b/flake.lock
+index bb2e400c0..1efb1de59 100644
+--- a/flake.lock
++++ b/flake.lock
+@@ -3,11 +3,11 @@
+     "flake-compat": {
+       "flake": false,
+       "locked": {
+-        "lastModified": 1673956053,
+-        "narHash": "sha256-4gtG9iQuiKITOjNQQeQIpoIB6b16fm+504Ch3sNKLd8=",
++        "lastModified": 1696426674,
++        "narHash": "sha256-kvjfFW7WAETZlt09AgDn1MrtKzP7t90Vf7vypd3OL1U=",
+         "owner": "edolstra",
+         "repo": "flake-compat",
+-        "rev": "35bb57c0c8d8b62bbfd284272c928ceb64ddbde9",
++        "rev": "0f9255e01c2351cc7d116c072cb317785dd33b33",
+         "type": "github"
+       },
+       "original": {
+@@ -19,11 +19,11 @@
+     "libgit2": {
+       "flake": false,
+       "locked": {
+-        "lastModified": 1697646580,
+-        "narHash": "sha256-oX4Z3S9WtJlwvj0uH9HlYcWv+x1hqp8mhXl7HsLu2f0=",
++        "lastModified": 1712096035,
++        "narHash": "sha256-40Pk50PVvk9TUO5AB1bQCEMLaq/KXpWUEhoVFCir4cc=",
+         "owner": "libgit2",
+         "repo": "libgit2",
+-        "rev": "45fd9ed7ae1a9b74b957ef4f337bc3c8b3df01b5",
++        "rev": "8afdad0eb049259cf5e2ec769430e639e5e5d940",
+         "type": "github"
+       },
+       "original": {
+@@ -34,11 +34,11 @@
+     },
+     "nixpkgs": {
+       "locked": {
+-        "lastModified": 1709083642,
+-        "narHash": "sha256-7kkJQd4rZ+vFrzWu8sTRtta5D1kBG0LSRYAfhtmMlSo=",
++        "lastModified": 1712386448,
++        "narHash": "sha256-kacQwZ5WnJv4HH5s8tlZTClyiwVP8XAaywI5I7QqLIY=",
+         "owner": "NixOS",
+         "repo": "nixpkgs",
+-        "rev": "b550fe4b4776908ac2a861124307045f8e717c8e",
++        "rev": "7644b4bc09c6329bcd82561a076fd7add697d092",
+         "type": "github"
+       },
+       "original": {
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 6e670efea..84fd51a88 100644
+index 6db9bf9a1..258c6d083 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -43,6 +43,23 @@ void completeFlakeInputPath(
+@@ -44,6 +44,23 @@ void completeFlakeInputPath(
      }
  }
  
@@ -26,7 +75,7 @@ index 6e670efea..84fd51a88 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -322,22 +339,36 @@ void completeFlakeRefWithFragment(
+@@ -324,22 +341,36 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -68,7 +117,7 @@ index 6e670efea..84fd51a88 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -347,6 +378,7 @@ void completeFlakeRefWithFragment(
+@@ -349,6 +380,7 @@ void completeFlakeRefWithFragment(
              if (prefixRoot == "."){
                  attrPathPrefixes.clear();
              }
@@ -76,7 +125,7 @@ index 6e670efea..84fd51a88 100644
              /* Complete 'fragment' relative to all the
                 attrpath prefixes as well as the root of the
                 flake. */
-@@ -371,7 +403,13 @@ void completeFlakeRefWithFragment(
+@@ -373,7 +405,13 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
@@ -91,7 +140,7 @@ index 6e670efea..84fd51a88 100644
                      }
                  }
              }
-@@ -408,7 +446,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
+@@ -410,7 +448,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -100,7 +149,7 @@ index 6e670efea..84fd51a88 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions.add(from);
-@@ -525,7 +563,13 @@ Installables SourceExprCommand::parseInstallables(
+@@ -528,7 +566,13 @@ Installables SourceExprCommand::parseInstallables(
              }
  
              try {
@@ -116,13 +165,13 @@ index 6e670efea..84fd51a88 100644
                          this,
                          getEvalState(),
 diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index e087f935c..79e20ebb7 100644
+index bf5759230..e4cd3494a 100644
 --- a/src/libcmd/installables.hh
 +++ b/src/libcmd/installables.hh
-@@ -12,6 +12,16 @@
- 
+@@ -13,6 +13,17 @@
  namespace nix {
  
+ struct PackageInfo;
 +struct InstallablesSettings : Config
 +{
 +    Setting<std::string> defaultFlake{this, "", "default-flake",
@@ -133,11 +182,12 @@ index e087f935c..79e20ebb7 100644
 +
 +extern InstallablesSettings installablesSettings;
 +
- struct DrvInfo;
++struct DrvInfo;
  
  enum class Realise {
+     /**
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index ef0139e09..3760a97cb 100644
+index 97ef1375e..41d6f1495 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -23,8 +23,9 @@ std::string wrap(std::string prefix, std::string s)
@@ -176,7 +226,7 @@ index ef0139e09..3760a97cb 100644
      }
  
      std::string description() override
-@@ -62,11 +81,18 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -62,14 +81,21 @@ struct CmdSearch : InstallableValueCommand, MixJSON
          };
      }
  
@@ -193,14 +243,31 @@ index ef0139e09..3760a97cb 100644
 +        auto installable = InstallableValue::require(
 +            parseInstallable(store, (file || expr) ? "" : _installable));
 +
-         // Empty search string should match all packages
-         // Use "^" here instead of ".*" due to differences in resulting highlighting
-         // (see #1893 -- libc++ claims empty search string is not in POSIX grammar)
+         // Recommend "^" here instead of ".*" due to differences in resulting highlighting
+         if (res.empty())
+-            throw UsageError("Must provide at least one regex! To match all packages, use '%s'.", "nix search <installable> ^");
++            throw UsageError("Must provide at least one regex! To match all packages, use '%s'.", "nix search ^");
+ 
+         std::vector<std::regex> regexes;
+         std::vector<std::regex> excludeRegexes;
+diff --git a/tests/functional/flakes/flakes.sh b/tests/functional/flakes/flakes.sh
+index 427290883..cbbc69dc9 100644
+--- a/tests/functional/flakes/flakes.sh
++++ b/tests/functional/flakes/flakes.sh
+@@ -187,7 +187,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
+ [[ -e "$TEST_ROOT/result/hello" ]]
+ 
+ # Test packages.default.
+-nix build -o "$TEST_ROOT/result" flake1
++nix build -o "$TEST_ROOT/result" flake1#
+ [[ -e "$TEST_ROOT/result/hello" ]]
+ 
+ nix build -o "$TEST_ROOT/result" "$flake1Dir"
 diff --git a/tests/functional/search.sh b/tests/functional/search.sh
-index 8742f8736..df27e1a64 100644
+index d9c7a75da..35f665db6 100644
 --- a/tests/functional/search.sh
 +++ b/tests/functional/search.sh
-@@ -3,40 +3,40 @@ source common.sh
+@@ -3,43 +3,42 @@ source common.sh
  clearStore
  clearCache
  
@@ -223,15 +290,19 @@ index 8742f8736..df27e1a64 100644
 -(( $(nix search -f search.nix '' hello broken | wc -l) == 0 ))
 +(( $(nix search -f search.nix hello broken | wc -l) == 0 ))
  
+ # No regex should return an error
+-(( $(nix search -f search.nix '' | wc -l) == 0 ))
++(( $(nix search -f search.nix | wc -l) == 0 ))
+ 
  ## Search expressions
  
- # Check that empty search string matches all
--nix search -f search.nix '' |grepQuiet foo
--nix search -f search.nix '' |grepQuiet bar
--nix search -f search.nix '' |grepQuiet hello
-+nix search -f search.nix |grep -q foo
-+nix search -f search.nix |grep -q bar
-+nix search -f search.nix |grep -q hello
+-# Check that empty search string matches all
+-nix search -f search.nix '' ^ | grepQuiet foo
+-nix search -f search.nix '' ^ | grepQuiet bar
+-nix search -f search.nix '' ^ | grepQuiet hello
++nix search -f search.nix ^ | grepQuiet foo
++nix search -f search.nix ^ | grepQuiet bar
++nix search -f search.nix ^ | grepQuiet hello
  
  ## Tests for multiple regex/match highlighting
  
@@ -252,4 +323,4 @@ index 8742f8736..df27e1a64 100644
 +(( $(nix search -f search.nix 'b' | grep -Eo "$e\[32;1mb$e\[(0|0;1)m" | wc -l) == 3 ))
  
  ## Tests for --exclude
- (( $(nix search -f search.nix -e hello | grep -c hello) == 0 ))
+ (( $(nix search -f search.nix ^ -e hello | grep -c hello) == 0 ))
