@@ -63,7 +63,7 @@
         });
 
         nix-dram = final.make-nix-dram {
-          nix = final.nixUnstable;
+          nix = final.nixVersions.latest;
         };
 
         nix-dram-progress = final.callPackage ({ nix }: nix.overrideAttrs (old: {
