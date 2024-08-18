@@ -1,8 +1,16 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 0fe956ec0..4872205a5 100644
+index 0fe956ec0..00c62b870 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -45,6 +45,23 @@ void completeFlakeInputPath(
+@@ -21,6 +21,7 @@
+ #include "url.hh"
+ #include "registry.hh"
+ #include "build-result.hh"
++#include "config-global.hh"
+ 
+ #include <regex>
+ #include <queue>
+@@ -45,6 +46,23 @@ void completeFlakeInputPath(
      }
  }
  
@@ -26,7 +34,7 @@ index 0fe956ec0..4872205a5 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -326,22 +343,37 @@ void completeFlakeRefWithFragment(
+@@ -326,22 +344,37 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -69,7 +77,7 @@ index 0fe956ec0..4872205a5 100644
  
              auto evalCache = openEvalCache(*evalState,
                  std::make_shared<flake::LockedFlake>(lockFlake(
-@@ -352,6 +384,7 @@ void completeFlakeRefWithFragment(
+@@ -352,6 +385,7 @@ void completeFlakeRefWithFragment(
              if (prefixRoot == "."){
                  attrPathPrefixes.clear();
              }
@@ -77,7 +85,7 @@ index 0fe956ec0..4872205a5 100644
              /* Complete 'fragment' relative to all the
                 attrpath prefixes as well as the root of the
                 flake. */
-@@ -377,7 +410,12 @@ void completeFlakeRefWithFragment(
+@@ -377,7 +411,12 @@ void completeFlakeRefWithFragment(
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
                          // FIXME: handle names with dots
@@ -91,7 +99,7 @@ index 0fe956ec0..4872205a5 100644
                      }
                  }
              }
-@@ -414,7 +452,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
+@@ -414,7 +453,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -100,7 +108,7 @@ index 0fe956ec0..4872205a5 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions.add(from);
-@@ -539,8 +577,13 @@ Installables SourceExprCommand::parseInstallables(
+@@ -539,8 +578,13 @@ Installables SourceExprCommand::parseInstallables(
              }
  
              try {
