@@ -79,7 +79,7 @@
             })
           ];
         })) {
-          nix = final.nixUnstable;
+          nix = final.nixVersions.latest;
         };
 
         nix-search = final.writeShellScriptBin "nix-search" ''
