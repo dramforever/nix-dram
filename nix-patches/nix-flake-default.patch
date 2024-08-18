@@ -1,8 +1,8 @@
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 6db9bf9a1..258c6d083 100644
+index 0fe956ec0..4872205a5 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
-@@ -44,6 +44,23 @@ void completeFlakeInputPath(
+@@ -45,6 +45,23 @@ void completeFlakeInputPath(
      }
  }
  
@@ -26,7 +26,7 @@ index 6db9bf9a1..258c6d083 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -324,22 +341,36 @@ void completeFlakeRefWithFragment(
+@@ -326,22 +343,37 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -55,7 +55,7 @@ index 6db9bf9a1..258c6d083 100644
 -            auto flakeRefS = std::string(prefix.substr(0, hash));
  
 -            // TODO: ideally this would use the command base directory instead of assuming ".".
--            auto flakeRef = parseFlakeRef(expandTilde(flakeRefS), absPath("."));
+-            auto flakeRef = parseFlakeRef(fetchSettings, expandTilde(flakeRefS), absPath("."));
 +            auto flakeRefS =
 +                isAttrPath
 +                ? std::string(installablesSettings.getDefaultFlake(prefix))
@@ -63,12 +63,13 @@ index 6db9bf9a1..258c6d083 100644
 +
 +            // FIXME: do tilde expansion.
 +            auto flakeRef = parseFlakeRef(
++                fetchSettings,
 +                flakeRefS,
 +                isAttrPath ? std::optional<std::string>{} : absPath("."));
  
              auto evalCache = openEvalCache(*evalState,
-                 std::make_shared<flake::LockedFlake>(lockFlake(*evalState, flakeRef, lockFlags)));
-@@ -349,6 +380,7 @@ void completeFlakeRefWithFragment(
+                 std::make_shared<flake::LockedFlake>(lockFlake(
+@@ -352,6 +384,7 @@ void completeFlakeRefWithFragment(
              if (prefixRoot == "."){
                  attrPathPrefixes.clear();
              }
@@ -76,12 +77,11 @@ index 6db9bf9a1..258c6d083 100644
              /* Complete 'fragment' relative to all the
                 attrpath prefixes as well as the root of the
                 flake. */
-@@ -373,7 +405,13 @@ void completeFlakeRefWithFragment(
-                         auto attrPath2 = (*attr)->getAttrPath(attr2);
+@@ -377,7 +410,12 @@ void completeFlakeRefWithFragment(
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
+                         // FIXME: handle names with dots
 -                        completions.add(flakeRefS + "#" + prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
-+
 +                        std::string resolvedAttrPath2 = prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2));
 +
 +                        if (isAttrPath)
@@ -91,7 +91,7 @@ index 6db9bf9a1..258c6d083 100644
                      }
                  }
              }
-@@ -410,7 +448,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
+@@ -414,7 +452,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -100,17 +100,18 @@ index 6db9bf9a1..258c6d083 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions.add(from);
-@@ -528,7 +566,13 @@ Installables SourceExprCommand::parseInstallables(
+@@ -539,8 +577,13 @@ Installables SourceExprCommand::parseInstallables(
              }
  
              try {
--                auto [flakeRef, fragment] = parseFlakeRefWithFragment(std::string { prefix }, absPath(getCommandBaseDir()));
+-                auto [flakeRef, fragment] = parseFlakeRefWithFragment(
+-                    fetchSettings, std::string { prefix }, absPath(getCommandBaseDir()));
 +                bool isAttrPath = std::regex_match(std::string { prefix }, attrPathRegex);
 +
 +                auto [flakeRef, fragment] =
 +                    isAttrPath
-+                    ? std::pair { parseFlakeRef(installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
-+                    : parseFlakeRefWithFragment(std::string { prefix }, absPath(getCommandBaseDir()));
++                    ? std::pair { parseFlakeRef(fetchSettings, installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
++                    : parseFlakeRefWithFragment(fetchSettings, std::string { prefix }, absPath(getCommandBaseDir()));
 +
                  result.push_back(make_ref<InstallableFlake>(
                          this,
@@ -138,10 +139,10 @@ index bf5759230..e4cd3494a 100644
  enum class Realise {
      /**
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 97ef1375e..41d6f1495 100644
+index 7f8504d3f..f6e0891c0 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -23,8 +23,9 @@ std::string wrap(std::string prefix, std::string s)
+@@ -25,8 +25,9 @@ std::string wrap(std::string prefix, std::string s)
      return concatStrings(prefix, s, ANSI_NORMAL);
  }
  
@@ -152,7 +153,7 @@ index 97ef1375e..41d6f1495 100644
      std::vector<std::string> res;
      std::vector<std::string> excludeRes;
  
-@@ -40,6 +41,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -42,6 +43,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
                  excludeRes.push_back(s);
              }},
          });
@@ -177,7 +178,7 @@ index 97ef1375e..41d6f1495 100644
      }
  
      std::string description() override
-@@ -62,14 +81,21 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -64,14 +83,21 @@ struct CmdSearch : InstallableValueCommand, MixJSON
          };
      }
  
@@ -202,10 +203,10 @@ index 97ef1375e..41d6f1495 100644
          std::vector<std::regex> regexes;
          std::vector<std::regex> excludeRegexes;
 diff --git a/tests/functional/flakes/flakes.sh b/tests/functional/flakes/flakes.sh
-index 427290883..cbbc69dc9 100644
+index 26b91eda7..3aab7bb29 100755
 --- a/tests/functional/flakes/flakes.sh
 +++ b/tests/functional/flakes/flakes.sh
-@@ -187,7 +187,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
+@@ -214,7 +214,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
  [[ -e "$TEST_ROOT/result/hello" ]]
  
  # Test packages.default.
@@ -215,11 +216,11 @@ index 427290883..cbbc69dc9 100644
  
  nix build -o "$TEST_ROOT/result" "$flake1Dir"
 diff --git a/tests/functional/search.sh b/tests/functional/search.sh
-index d9c7a75da..35f665db6 100644
+index 3fadecd02..604926718 100755
 --- a/tests/functional/search.sh
 +++ b/tests/functional/search.sh
-@@ -3,43 +3,42 @@ source common.sh
- clearStore
+@@ -5,43 +5,42 @@ source common.sh
+ clearStoreIfPossible
  clearCache
  
 -(( $(nix search -f search.nix '' hello | wc -l) > 0 ))
