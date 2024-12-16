@@ -1,17 +1,17 @@
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c92ed1663..8371bbd20 100644
+index c8d0b9e96..1510b2955 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
-@@ -9,6 +9,8 @@
- #include "eval-cache.hh"
+@@ -11,6 +11,8 @@
  #include "attr-path.hh"
  #include "hilite.hh"
+ #include "strings-inline.hh"
 +#include "fmt.hh"
 +#include "value-to-json.hh"
  
  #include <regex>
  #include <fstream>
-@@ -153,10 +155,13 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -155,10 +157,13 @@ struct CmdSearch : InstallableValueCommand, MixJSON
                      {
                          results++;
                          if (json) {

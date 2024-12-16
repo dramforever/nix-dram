@@ -1,18 +1,18 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index cc416a4d6..a3e348a21 100644
+index b64e73c26..62364e2ea 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -122,6 +122,8 @@ void loadConfFile()
+@@ -112,6 +112,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
-     globalConfig.resetOverridden();
+     config.resetOverridden();
  
 +    settings.environment.overridden = settings.environment.hasInherited;
 +
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
-         globalConfig.applyConfigFile(*file);
-@@ -319,6 +321,60 @@ Paths PluginFilesSetting::parse(const std::string & str) const
-     return BaseSetting<Paths>::parse(str);
+         applyConfigFile(*file);
+@@ -308,6 +310,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+     }
  }
  
 +void EnvironmentSetting::appendOrSet(Strings newValue, bool append)
@@ -70,13 +70,13 @@ index cc416a4d6..a3e348a21 100644
 +    }
 +}
  
- void initPlugins()
+ static void preloadNSS()
  {
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index 27caf42c4..c9819e1dc 100644
+index ff3df46ba..58650bbbd 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
-@@ -55,6 +55,24 @@ const uint32_t maxIdsPerBuild =
+@@ -39,6 +39,24 @@ const uint32_t maxIdsPerBuild =
      #endif
      ;
  
@@ -101,8 +101,8 @@ index 27caf42c4..c9819e1dc 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -1094,6 +1112,23 @@ public:
-           store paths of the latest Nix release.
+@@ -1236,6 +1254,23 @@ public:
+           Set it to 1 to warn on all paths.
          )"
      };
 +
@@ -197,12 +197,12 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/functional/local.mk b/tests/functional/local.mk
-index 21dabca88..ccd492e8f 100644
+index e50b5eaf1..86618c7e2 100644
 --- a/tests/functional/local.mk
 +++ b/tests/functional/local.mk
-@@ -97,6 +97,7 @@ nix_tests = \
+@@ -84,6 +84,7 @@ nix_tests = \
+   post-hook.sh \
    function-trace.sh \
-   flakes/config.sh \
    fmt.sh \
 +  environment.sh \
    eval-store.sh \
