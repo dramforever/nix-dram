@@ -1,8 +1,8 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index b64e73c26..62364e2ea 100644
+index d7c000dfa..3de71fcd3 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -112,6 +112,8 @@ void loadConfFile(AbstractConfig & config)
+@@ -111,6 +111,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
      config.resetOverridden();
  
@@ -11,7 +11,7 @@ index b64e73c26..62364e2ea 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          applyConfigFile(*file);
-@@ -308,6 +310,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+@@ -307,6 +309,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
      }
  }
  
@@ -73,7 +73,7 @@ index b64e73c26..62364e2ea 100644
  static void preloadNSS()
  {
 diff --git a/src/libstore/globals.hh b/src/libstore/globals.hh
-index ff3df46ba..58650bbbd 100644
+index 1682d572c..59a5441b8 100644
 --- a/src/libstore/globals.hh
 +++ b/src/libstore/globals.hh
 @@ -39,6 +39,24 @@ const uint32_t maxIdsPerBuild =
@@ -101,7 +101,7 @@ index ff3df46ba..58650bbbd 100644
  class Settings : public Config {
  
      unsigned int getDefaultCores();
-@@ -1236,6 +1254,23 @@ public:
+@@ -1231,6 +1249,23 @@ public:
            Set it to 1 to warn on all paths.
          )"
      };
@@ -196,15 +196,15 @@ index 000000000..08c5a6e3f
 +  )" == 'environment = env_name=client_value set_in_config=daemon_value' ]]
 +
 +killDaemon
-diff --git a/tests/functional/local.mk b/tests/functional/local.mk
-index e50b5eaf1..86618c7e2 100644
---- a/tests/functional/local.mk
-+++ b/tests/functional/local.mk
-@@ -84,6 +84,7 @@ nix_tests = \
-   post-hook.sh \
-   function-trace.sh \
-   fmt.sh \
-+  environment.sh \
-   eval-store.sh \
-   why-depends.sh \
-   derivation-json.sh \
+diff --git a/tests/functional/meson.build b/tests/functional/meson.build
+index 03a07bc54..1d722bc6c 100644
+--- a/tests/functional/meson.build
++++ b/tests/functional/meson.build
+@@ -165,6 +165,7 @@ suites = [
+       'extra-sandbox-profile.sh',
+       'help.sh',
+       'symlinks.sh',
++      'environment.sh',
+     ],
+     'workdir': meson.current_source_dir(),
+   },
