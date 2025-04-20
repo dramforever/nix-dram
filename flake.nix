@@ -54,12 +54,13 @@
           final.haskellPackages.callPackage ./nix-nar-listing {};
 
         make-nix-dram = { nix }:
-          (nix.appendPatches [
-            ./nix-patches/nix-flake-default.patch
-            ./nix-patches/nix-search-meta.patch
-            ./nix-patches/nix-environment.patch
-          ]).overrideAttrs (old: {
+          nix.overrideAttrs (old: {
             name = "nix-dram-" + old.version;
+            patches = [
+              ./nix-patches/nix-flake-default.patch
+              ./nix-patches/nix-search-meta.patch
+              ./nix-patches/nix-environment.patch
+            ];
           });
 
         nix-dram = final.make-nix-dram {

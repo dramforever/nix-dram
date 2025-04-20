@@ -1,13 +1,13 @@
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c8d0b9e96..1510b2955 100644
+index a27891c93..d033df4fe 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -11,6 +11,8 @@
- #include "attr-path.hh"
- #include "hilite.hh"
- #include "strings-inline.hh"
-+#include "fmt.hh"
-+#include "value-to-json.hh"
+ #include "nix/expr/attr-path.hh"
+ #include "nix/util/hilite.hh"
+ #include "nix/util/strings-inline.hh"
++#include "nix/util/fmt.hh"
++#include "nix/expr/value-to-json.hh"
  
  #include <regex>
  #include <fstream>
@@ -24,4 +24,4 @@ index c8d0b9e96..1510b2955 100644
 +                                {"meta", printValueAsJSON(*state, true, aMeta->forceValue(), noPos, context, false)}
                              };
                          } else {
-                             auto name2 = hiliteMatches(name.name, nameMatches, ANSI_GREEN, "\e[0;2m");
+                             if (results > 1) logger->cout("");

@@ -1,16 +1,38 @@
+diff --git a/src/libcmd/include/nix/cmd/installables.hh b/src/libcmd/include/nix/cmd/installables.hh
+index 84941278a..c694b0b14 100644
+--- a/src/libcmd/include/nix/cmd/installables.hh
++++ b/src/libcmd/include/nix/cmd/installables.hh
+@@ -13,6 +13,17 @@
+ namespace nix {
+ 
+ struct PackageInfo;
++struct InstallablesSettings : Config
++{
++    Setting<std::string> defaultFlake{this, "", "default-flake",
++        "The default flake URL when using the command line interface"};
++
++    std::string getDefaultFlake(std::string_view url);
++};
++
++extern InstallablesSettings installablesSettings;
++
++struct DrvInfo;
+ 
+ enum class Realise {
+     /**
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 227bb64ed..72727e00f 100644
+index c010887fa..fcf75bc52 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -21,6 +21,7 @@
- #include "url.hh"
- #include "registry.hh"
- #include "build-result.hh"
-+#include "config-global.hh"
+ #include "nix/util/url.hh"
+ #include "nix/fetchers/registry.hh"
+ #include "nix/store/build-result.hh"
++#include "nix/util/config-global.hh"
  
  #include <regex>
  #include <queue>
-@@ -47,6 +48,23 @@ void completeFlakeInputPath(
+@@ -47,6 +48,23 @@ void completeFlakeInputAttrPath(
      }
  }
  
@@ -125,30 +147,8 @@ index 227bb64ed..72727e00f 100644
                  result.push_back(make_ref<InstallableFlake>(
                          this,
                          getEvalState(),
-diff --git a/src/libcmd/installables.hh b/src/libcmd/installables.hh
-index bf5759230..e4cd3494a 100644
---- a/src/libcmd/installables.hh
-+++ b/src/libcmd/installables.hh
-@@ -13,6 +13,17 @@
- namespace nix {
- 
- struct PackageInfo;
-+struct InstallablesSettings : Config
-+{
-+    Setting<std::string> defaultFlake{this, "", "default-flake",
-+        "The default flake URL when using the command line interface"};
-+
-+    std::string getDefaultFlake(std::string_view url);
-+};
-+
-+extern InstallablesSettings installablesSettings;
-+
-+struct DrvInfo;
- 
- enum class Realise {
-     /**
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index c8d0b9e96..73a79b5c7 100644
+index a27891c93..439600dcb 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -26,8 +26,9 @@ std::string wrap(std::string prefix, std::string s)
@@ -212,10 +212,10 @@ index c8d0b9e96..73a79b5c7 100644
          std::vector<std::regex> regexes;
          std::vector<std::regex> excludeRegexes;
 diff --git a/tests/functional/flakes/flakes.sh b/tests/functional/flakes/flakes.sh
-index 5e901c5d1..a7e42b6f8 100755
+index d8c9f254d..8f62df95f 100755
 --- a/tests/functional/flakes/flakes.sh
 +++ b/tests/functional/flakes/flakes.sh
-@@ -217,7 +217,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
+@@ -92,7 +92,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
  [[ -e "$TEST_ROOT/result/hello" ]]
  
  # Test packages.default.
