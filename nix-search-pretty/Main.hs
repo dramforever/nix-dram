@@ -7,11 +7,9 @@ module Main where
 import           Control.Applicative
 import           Control.Monad (when)
 import           Data.Aeson
-import           Data.Aeson.Parser
 import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Lazy as H
-import           Data.HashMap.Lazy ((!), (!?))
 import           Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -25,11 +23,11 @@ newtype OneOrArray a = OneOrArray (V.Vector a)
     deriving (Show)
 
 instance FromJSON1 OneOrArray where
-    liftParseJSON go _ (Array arr) = OneOrArray <$> traverse go arr
-    liftParseJSON go _ val = OneOrArray . V.singleton <$> go val
+    liftParseJSON _ go _ (Array arr) = OneOrArray <$> traverse go arr
+    liftParseJSON _ go _ val = OneOrArray . V.singleton <$> go val
 
 instance FromJSON a => FromJSON (OneOrArray a) where
-    parseJSON = liftParseJSON parseJSON parseJSONList
+    parseJSON = parseJSON1
 
 data PackageLicense
     = PackageLicense
