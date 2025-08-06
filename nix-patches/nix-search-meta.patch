@@ -1,5 +1,5 @@
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index a27891c93..d033df4fe 100644
+index 562af3151..c14635d77 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -11,6 +11,8 @@
@@ -11,8 +11,8 @@ index a27891c93..d033df4fe 100644
  
  #include <regex>
  #include <fstream>
-@@ -155,10 +157,13 @@ struct CmdSearch : InstallableValueCommand, MixJSON
-                     {
+@@ -148,10 +150,13 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+                     if (found) {
                          results++;
                          if (json) {
 +                            NixStringContext context;
@@ -24,4 +24,4 @@ index a27891c93..d033df4fe 100644
 +                                {"meta", printValueAsJSON(*state, true, aMeta->forceValue(), noPos, context, false)}
                              };
                          } else {
-                             if (results > 1) logger->cout("");
+                             if (results > 1)

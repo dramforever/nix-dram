@@ -1,5 +1,5 @@
 diff --git a/src/libcmd/include/nix/cmd/installables.hh b/src/libcmd/include/nix/cmd/installables.hh
-index 84941278a..c694b0b14 100644
+index 530334e03..2f5729c65 100644
 --- a/src/libcmd/include/nix/cmd/installables.hh
 +++ b/src/libcmd/include/nix/cmd/installables.hh
 @@ -13,6 +13,17 @@
@@ -21,7 +21,7 @@ index 84941278a..c694b0b14 100644
  enum class Realise {
      /**
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 2d6024890..2e78fe1b4 100644
+index 0e6a204a7..7597bffd1 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -21,6 +21,7 @@
@@ -56,7 +56,7 @@ index 2d6024890..2e78fe1b4 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -326,22 +344,37 @@ void completeFlakeRefWithFragment(
+@@ -317,23 +335,38 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -78,7 +78,7 @@ index 2d6024890..2e78fe1b4 100644
 +                : prefix.substr(hash + 1);
 +
              std::string prefixRoot = "";
-             if (fragment.starts_with(".")){
+             if (fragment.starts_with(".")) {
                  fragment = fragment.substr(1);
                  prefixRoot = ".";
              }
@@ -90,29 +90,32 @@ index 2d6024890..2e78fe1b4 100644
 +                : expandTilde(std::string(prefix.substr(0, hash)));
  
              // TODO: ideally this would use the command base directory instead of assuming ".".
--            auto flakeRef = parseFlakeRef(fetchSettings, expandTilde(flakeRefS), std::filesystem::current_path().string());
-+            auto flakeRef = parseFlakeRef(
+             auto flakeRef =
+-                parseFlakeRef(fetchSettings, expandTilde(flakeRefS), std::filesystem::current_path().string());
++                parseFlakeRef(
 +                fetchSettings,
 +                expandTilde(flakeRefS),
 +                isAttrPath ? std::optional<std::string>{} : std::filesystem::current_path().string());
  
-             auto evalCache = openEvalCache(*evalState,
-                 std::make_shared<flake::LockedFlake>(lockFlake(
-@@ -352,6 +385,7 @@ void completeFlakeRefWithFragment(
-             if (prefixRoot == "."){
+             auto evalCache = openEvalCache(
+                 *evalState,
+@@ -344,6 +377,7 @@ void completeFlakeRefWithFragment(
+             if (prefixRoot == ".") {
                  attrPathPrefixes.clear();
              }
 +
              /* Complete 'fragment' relative to all the
                 attrpath prefixes as well as the root of the
                 flake. */
-@@ -376,8 +410,14 @@ void completeFlakeRefWithFragment(
+@@ -369,10 +403,14 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
 +
                          // FIXME: handle names with dots
--                        completions.add(flakeRefS + "#" + prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
+-                        completions.add(
+-                            flakeRefS + "#" + prefixRoot
+-                            + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
 +                        std::string resolvedAttrPath2 = prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2));
 +
 +                        if (isAttrPath)
@@ -122,7 +125,7 @@ index 2d6024890..2e78fe1b4 100644
                      }
                  }
              }
-@@ -414,7 +454,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
+@@ -410,7 +448,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -131,24 +134,26 @@ index 2d6024890..2e78fe1b4 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions.add(from);
-@@ -543,8 +583,13 @@ Installables SourceExprCommand::parseInstallables(
+@@ -534,10 +572,14 @@ Installables SourceExprCommand::parseInstallables(ref<Store> store, std::vector<
              }
  
              try {
--                auto [flakeRef, fragment] = parseFlakeRefWithFragment(
--                    fetchSettings, std::string { prefix }, absPath(getCommandBaseDir()));
 +                bool isAttrPath = std::regex_match(std::string { prefix }, attrPathRegex);
 +
-+                auto [flakeRef, fragment] =
+                 auto [flakeRef, fragment] =
+-                    parseFlakeRefWithFragment(fetchSettings, std::string{prefix}, absPath(getCommandBaseDir()));
+-                result.push_back(
+-                    make_ref<InstallableFlake>(
 +                    isAttrPath
 +                    ? std::pair { parseFlakeRef(fetchSettings, installablesSettings.getDefaultFlake(s), {}), std::string { prefix } }
 +                    : parseFlakeRefWithFragment(fetchSettings, std::string { prefix }, absPath(getCommandBaseDir()));
 +
-                 result.push_back(make_ref<InstallableFlake>(
++                result.push_back(make_ref<InstallableFlake>(
                          this,
                          getEvalState(),
+                         std::move(flakeRef),
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 306a80594..57db8c6db 100644
+index 562af3151..dfa7ef258 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -26,8 +26,9 @@ std::string wrap(std::string prefix, std::string s)
@@ -162,10 +167,10 @@ index 306a80594..57db8c6db 100644
      std::vector<std::string> res;
      std::vector<std::string> excludeRes;
  
-@@ -43,6 +44,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
-                 excludeRes.push_back(s);
-             }},
-         });
+@@ -42,6 +43,24 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+                 .labels = {"regex"},
+                 .handler = {[this](std::string s) { excludeRes.push_back(s); }},
+             });
 +
 +        bool hasInstallable = false;
 +
@@ -187,8 +192,8 @@ index 306a80594..57db8c6db 100644
      }
  
      std::string description() override
-@@ -65,14 +84,21 @@ struct CmdSearch : InstallableValueCommand, MixJSON
-         };
+@@ -61,15 +80,22 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+         return {"packages." + settings.thisSystem.get(), "legacyPackages." + settings.thisSystem.get()};
      }
  
 -    void run(ref<Store> store, ref<InstallableValue> installable) override
@@ -206,13 +211,14 @@ index 306a80594..57db8c6db 100644
 +
          // Recommend "^" here instead of ".*" due to differences in resulting highlighting
          if (res.empty())
--            throw UsageError("Must provide at least one regex! To match all packages, use '%s'.", "nix search <installable> ^");
-+            throw UsageError("Must provide at least one regex! To match all packages, use '%s'.", "nix search ^");
+             throw UsageError(
+-                "Must provide at least one regex! To match all packages, use '%s'.", "nix search <installable> ^");
++                "Must provide at least one regex! To match all packages, use '%s'.", "nix search ^");
  
          std::vector<std::regex> regexes;
          std::vector<std::regex> excludeRegexes;
 diff --git a/tests/functional/flakes/flakes.sh b/tests/functional/flakes/flakes.sh
-index ce695a6cb..162d4d93b 100755
+index 7fd9dc9b5..68c2b72a0 100755
 --- a/tests/functional/flakes/flakes.sh
 +++ b/tests/functional/flakes/flakes.sh
 @@ -92,7 +92,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo

@@ -1,8 +1,8 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index c2ecc4964..838e43114 100644
+index f86c9cefa..520d157f6 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -111,6 +111,8 @@ void loadConfFile(AbstractConfig & config)
+@@ -113,6 +113,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
      config.resetOverridden();
  
@@ -11,10 +11,10 @@ index c2ecc4964..838e43114 100644
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          applyConfigFile(*file);
-@@ -307,6 +309,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+@@ -328,6 +330,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+             throw UsageError("configuration setting '%s' should be 'auto' or an integer", name);
      }
  }
- 
 +void EnvironmentSetting::appendOrSet(Strings newValue, bool append)
 +{
 +    if (! append) {
@@ -73,11 +73,11 @@ index c2ecc4964..838e43114 100644
  static void preloadNSS()
  {
 diff --git a/src/libstore/include/nix/store/globals.hh b/src/libstore/include/nix/store/globals.hh
-index 3a677216a..3ff3f14ff 100644
+index 84e8dccaa..3561ef411 100644
 --- a/src/libstore/include/nix/store/globals.hh
 +++ b/src/libstore/include/nix/store/globals.hh
-@@ -41,6 +41,24 @@ const uint32_t maxIdsPerBuild =
-     #endif
+@@ -42,6 +42,24 @@ const uint32_t maxIdsPerBuild =
+ #endif
      ;
  
 +struct EnvironmentSetting : public BaseSetting<Strings>
@@ -98,13 +98,13 @@ index 3a677216a..3ff3f14ff 100644
 +    void appendOrSet(Strings newValue, bool append) override;
 +};
 +
- class Settings : public Config {
+ class Settings : public Config
+ {
  
-     unsigned int getDefaultCores();
-@@ -1236,6 +1254,23 @@ public:
+@@ -1354,6 +1372,23 @@ public:
+           Default is 0, which disables the warning.
            Set it to 1 to warn on all paths.
-         )"
-     };
+         )"};
 +
 +    EnvironmentSetting environment{this, {}, "environment",
 +        R"(
@@ -124,7 +124,7 @@ index 3a677216a..3ff3f14ff 100644
 +        )"};
  };
  
- 
+ // FIXME: don't use a global variable.
 diff --git a/tests/functional/environment.nix b/tests/functional/environment.nix
 new file mode 100644
 index 000000000..2b0380ed7
@@ -197,10 +197,10 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/functional/meson.build b/tests/functional/meson.build
-index b2005d9d9..9d8a44150 100644
+index bd87e9b34..57593b71c 100644
 --- a/tests/functional/meson.build
 +++ b/tests/functional/meson.build
-@@ -166,6 +166,7 @@ suites = [
+@@ -170,6 +170,7 @@ suites = [
        'extra-sandbox-profile.sh',
        'help.sh',
        'symlinks.sh',
