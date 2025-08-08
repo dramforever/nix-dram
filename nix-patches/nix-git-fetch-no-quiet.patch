@@ -1,0 +1,19 @@
+commit 053b371aa39f01bcfe8b31eed78aaa5cbc2ebc9a
+Author: dramforever <dramforever@live.com>
+Date:   Fri Aug 8 09:07:22 2025 +0800
+
+    HACK: No --quiet for git fetch
+
+diff --git a/src/libfetchers/git-utils.cc b/src/libfetchers/git-utils.cc
+index ce54f5747..538912a12 100644
+--- a/src/libfetchers/git-utils.cc
++++ b/src/libfetchers/git-utils.cc
+@@ -535,7 +535,7 @@ struct GitRepoImpl : GitRepo, std::enable_shared_from_this<GitRepoImpl>
+         //       then use code that was removed in this commit (see blame)
+ 
+         auto dir = this->path;
+-        Strings gitArgs{"-C", dir.string(), "--git-dir", ".", "fetch", "--quiet", "--force"};
++        Strings gitArgs{"-C", dir.string(), "--git-dir", ".", "fetch", "--force"};
+         if (shallow)
+             append(gitArgs, {"--depth", "1"});
+         append(gitArgs, {std::string("--"), url, refspec});

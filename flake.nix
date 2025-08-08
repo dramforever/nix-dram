@@ -58,6 +58,7 @@
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
             ./nix-patches/nix-environment.patch
+            ./nix-patches/nix-git-fetch-no-quiet.patch
           ]).overrideAttrs (old: {
             name = "nix-dram-" + old.version;
           });
@@ -72,6 +73,7 @@
               ./nix-patches/nix-flake-default.patch
               ./nix-patches/nix-search-meta.patch
               ./nix-patches/nix-environment.patch
+              ./nix-patches/nix-git-fetch-no-quiet.patch
               (final.fetchpatch {
                 name = "nix-progress.diff";
                 url = "https://github.com/NixOS/nix/compare/480426a...1af0a16.diff";
