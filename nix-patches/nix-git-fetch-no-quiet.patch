@@ -1,14 +1,17 @@
-commit 053b371aa39f01bcfe8b31eed78aaa5cbc2ebc9a
-Author: dramforever <dramforever@live.com>
-Date:   Fri Aug 8 09:07:22 2025 +0800
+From 0b3caefca3789f61812b0637ec4b5fe47ae32e8f Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Fri, 8 Aug 2025 09:07:22 +0800
+Subject: [PATCH] HACK: No --quiet for git fetch
 
-    HACK: No --quiet for git fetch
+---
+ src/libfetchers/git-utils.cc | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/src/libfetchers/git-utils.cc b/src/libfetchers/git-utils.cc
-index ce54f5747..538912a12 100644
+index 215418522..6a9b51cb6 100644
 --- a/src/libfetchers/git-utils.cc
 +++ b/src/libfetchers/git-utils.cc
-@@ -535,7 +535,7 @@ struct GitRepoImpl : GitRepo, std::enable_shared_from_this<GitRepoImpl>
+@@ -548,7 +548,7 @@ struct GitRepoImpl : GitRepo, std::enable_shared_from_this<GitRepoImpl>
          //       then use code that was removed in this commit (see blame)
  
          auto dir = this->path;
@@ -17,3 +20,19 @@ index ce54f5747..538912a12 100644
          if (shallow)
              append(gitArgs, {"--depth", "1"});
          append(gitArgs, {std::string("--"), url, refspec});
+@@ -557,11 +557,9 @@ struct GitRepoImpl : GitRepo, std::enable_shared_from_this<GitRepoImpl>
+             RunOptions{
+                 .program = "git",
+                 .lookupPath = true,
+-                // FIXME: git stderr messes up our progress indicator, so
+-                // we're using --quiet for now. Should process its stderr.
++                // FIXME: git stderr messes up our progress indicator
+                 .args = gitArgs,
+                 .input = {},
+-                .mergeStderrToStdout = true,
+                 .isInteractive = true});
+ 
+         if (status > 0) {
+-- 
+2.51.0
+
