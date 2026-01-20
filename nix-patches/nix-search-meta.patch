@@ -1,5 +1,5 @@
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 562af3151..c14635d77 100644
+index dac60ceba..b72dea4bd 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -11,6 +11,8 @@
@@ -8,16 +8,16 @@ index 562af3151..c14635d77 100644
  #include "nix/util/strings-inline.hh"
 +#include "nix/util/fmt.hh"
 +#include "nix/expr/value-to-json.hh"
- 
+
  #include <regex>
  #include <fstream>
-@@ -148,10 +150,13 @@ struct CmdSearch : InstallableValueCommand, MixJSON
+@@ -147,10 +149,13 @@ struct CmdSearch : InstallableValueCommand, MixJSON
                      if (found) {
                          results++;
                          if (json) {
 +                            NixStringContext context;
 +
-                             (*jsonOut)[attrPath2] = {
+                             (*jsonOut)[attrPathStr] = {
                                  {"pname", name.name},
                                  {"version", name.version},
                                  {"description", description},

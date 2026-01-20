@@ -1,17 +1,17 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 58a649fc5..1fac836d8 100644
+index 27d17e1a9..0da943b6c 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
 @@ -122,6 +122,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
      config.resetOverridden();
- 
+
 +    settings.environment.overridden = settings.environment.hasInherited;
 +
      auto files = settings.nixUserConfFiles;
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          applyConfigFile(*file);
-@@ -378,6 +380,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+@@ -387,6 +389,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
              throw UsageError("configuration setting '%s' should be 'auto' or an integer", name);
      }
  }
@@ -69,17 +69,17 @@ index 58a649fc5..1fac836d8 100644
 +        }
 +    }
 +}
- 
- NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Settings::ExternalBuilder, systems, program, args);
- 
+
+ template<>
+ Settings::ExternalBuilders BaseSetting<Settings::ExternalBuilders>::parse(const std::string & str) const
 diff --git a/src/libstore/include/nix/store/globals.hh b/src/libstore/include/nix/store/globals.hh
-index 1b59bd6fc..a262c9a3e 100644
+index 89e92d30e..d82713c80 100644
 --- a/src/libstore/include/nix/store/globals.hh
 +++ b/src/libstore/include/nix/store/globals.hh
 @@ -62,6 +62,24 @@ const uint32_t maxIdsPerBuild =
  #endif
      ;
- 
+
 +struct EnvironmentSetting : public BaseSetting<Strings>
 +{
 +    std::map<std::string, std::optional<std::string>> oldEnvironment;
@@ -100,11 +100,11 @@ index 1b59bd6fc..a262c9a3e 100644
 +
  class Settings : public Config
  {
- 
-@@ -1443,6 +1461,23 @@ public:
-         //        Current system: 'aarch64-darwin' with features {apple-virt, benchmark, big-parallel, nixos-test}
-         // Xp::ExternalBuilders
-     };
+
+@@ -1444,6 +1462,23 @@ public:
+      * derivation, or else returns a null pointer.
+      */
+     const ExternalBuilder * findExternalDerivationBuilderIfSupported(const Derivation & drv);
 +
 +    EnvironmentSetting environment{this, {}, "environment",
 +        R"(
@@ -123,7 +123,7 @@ index 1b59bd6fc..a262c9a3e 100644
 +          Nix installation.
 +        )"};
  };
- 
+
  // FIXME: don't use a global variable.
 diff --git a/tests/functional/environment.nix b/tests/functional/environment.nix
 new file mode 100644
@@ -197,7 +197,7 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/functional/meson.build b/tests/functional/meson.build
-index 6f649c836..e3bc1a919 100644
+index d917d91c3..eaf41cde0 100644
 --- a/tests/functional/meson.build
 +++ b/tests/functional/meson.build
 @@ -175,6 +175,7 @@ suites = [
