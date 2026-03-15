@@ -1,17 +1,17 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 58a649fc5..1fac836d8 100644
+index 2e262aec8..89673518c 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -122,6 +122,8 @@ void loadConfFile(AbstractConfig & config)
+@@ -140,6 +140,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
      config.resetOverridden();
  
 +    settings.environment.overridden = settings.environment.hasInherited;
 +
-     auto files = settings.nixUserConfFiles;
+     auto files = nixUserConfFiles();
      for (auto file = files.rbegin(); file != files.rend(); file++) {
-         applyConfigFile(*file);
-@@ -378,6 +380,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+         applyConfigFile(file->string());
+@@ -427,6 +429,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
              throw UsageError("configuration setting '%s' should be 'auto' or an integer", name);
      }
  }
@@ -70,15 +70,15 @@ index 58a649fc5..1fac836d8 100644
 +    }
 +}
  
- NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Settings::ExternalBuilder, systems, program, args);
- 
+ template<>
+ LocalSettings::ExternalBuilders BaseSetting<LocalSettings::ExternalBuilders>::parse(const std::string & str) const
 diff --git a/src/libstore/include/nix/store/globals.hh b/src/libstore/include/nix/store/globals.hh
-index 1b59bd6fc..a262c9a3e 100644
+index 3f2f122eb..49dc92417 100644
 --- a/src/libstore/include/nix/store/globals.hh
 +++ b/src/libstore/include/nix/store/globals.hh
-@@ -62,6 +62,24 @@ const uint32_t maxIdsPerBuild =
- #endif
-     ;
+@@ -99,6 +99,24 @@ struct NarInfoDiskCacheSettings : public virtual Config
+         )"};
+ };
  
 +struct EnvironmentSetting : public BaseSetting<Strings>
 +{
@@ -98,13 +98,13 @@ index 1b59bd6fc..a262c9a3e 100644
 +    void appendOrSet(Strings newValue, bool append) override;
 +};
 +
- class Settings : public Config
- {
- 
-@@ -1443,6 +1461,23 @@ public:
-         //        Current system: 'aarch64-darwin' with features {apple-virt, benchmark, big-parallel, nixos-test}
-         // Xp::ExternalBuilders
-     };
+ class Settings : public virtual Config,
+                  private LocalSettings,
+                  private LogFileSettings,
+@@ -423,6 +441,23 @@ public:
+      * Get the options needed for profile directory functions.
+      */
+     ProfileDirsOptions getProfileDirsOptions() const;
 +
 +    EnvironmentSetting environment{this, {}, "environment",
 +        R"(
@@ -197,10 +197,10 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/functional/meson.build b/tests/functional/meson.build
-index 6f649c836..e3bc1a919 100644
+index bc4d2643e..a9e3aa890 100644
 --- a/tests/functional/meson.build
 +++ b/tests/functional/meson.build
-@@ -175,6 +175,7 @@ suites = [
+@@ -178,6 +178,7 @@ suites = [
        'help.sh',
        'symlinks.sh',
        'external-builders.sh',

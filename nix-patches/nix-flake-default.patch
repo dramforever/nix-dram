@@ -21,7 +21,7 @@ index 530334e03..2f5729c65 100644
  enum class Realise {
      /**
 diff --git a/src/libcmd/installables.cc b/src/libcmd/installables.cc
-index 0e6a204a7..7597bffd1 100644
+index 8f8309bd9..81d0b61f7 100644
 --- a/src/libcmd/installables.cc
 +++ b/src/libcmd/installables.cc
 @@ -21,6 +21,7 @@
@@ -56,7 +56,7 @@ index 0e6a204a7..7597bffd1 100644
  MixFlakeOptions::MixFlakeOptions()
  {
      auto category = "Common flake-related options";
-@@ -317,23 +335,38 @@ void completeFlakeRefWithFragment(
+@@ -331,23 +349,38 @@ void completeFlakeRefWithFragment(
      /* Look for flake output attributes that match the
         prefix. */
      try {
@@ -98,8 +98,8 @@ index 0e6a204a7..7597bffd1 100644
 +                isAttrPath ? std::optional<std::string>{} : std::filesystem::current_path().string());
  
              auto evalCache = openEvalCache(
-                 *evalState,
-@@ -344,6 +377,7 @@ void completeFlakeRefWithFragment(
+                 *evalState, make_ref<flake::LockedFlake>(lockFlake(flakeSettings, *evalState, flakeRef, lockFlags)));
+@@ -357,6 +390,7 @@ void completeFlakeRefWithFragment(
              if (prefixRoot == ".") {
                  attrPathPrefixes.clear();
              }
@@ -107,16 +107,14 @@ index 0e6a204a7..7597bffd1 100644
              /* Complete 'fragment' relative to all the
                 attrpath prefixes as well as the root of the
                 flake. */
-@@ -369,10 +403,14 @@ void completeFlakeRefWithFragment(
+@@ -382,8 +416,14 @@ void completeFlakeRefWithFragment(
                          auto attrPath2 = (*attr)->getAttrPath(attr2);
                          /* Strip the attrpath prefix. */
                          attrPath2.erase(attrPath2.begin(), attrPath2.begin() + attrPathPrefix.size());
 +
                          // FIXME: handle names with dots
--                        completions.add(
--                            flakeRefS + "#" + prefixRoot
--                            + concatStringsSep(".", evalState->symbols.resolve(attrPath2)));
-+                        std::string resolvedAttrPath2 = prefixRoot + concatStringsSep(".", evalState->symbols.resolve(attrPath2));
+-                        completions.add(flakeRefS + "#" + prefixRoot + attrPath2.to_string(*evalState));
++                        std::string resolvedAttrPath2 = prefixRoot + attrPath2.to_string(*evalState);
 +
 +                        if (isAttrPath)
 +                            completions.add(resolvedAttrPath2);
@@ -125,7 +123,7 @@ index 0e6a204a7..7597bffd1 100644
                      }
                  }
              }
-@@ -410,7 +448,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
+@@ -421,7 +461,7 @@ void completeFlakeRef(AddCompletions & completions, ref<Store> store, std::strin
              if (!hasPrefix(prefix, "flake:") && hasPrefix(from, "flake:")) {
                  std::string from2(from, 6);
                  if (hasPrefix(from2, prefix))
@@ -134,7 +132,7 @@ index 0e6a204a7..7597bffd1 100644
              } else {
                  if (hasPrefix(from, prefix))
                      completions.add(from);
-@@ -534,10 +572,14 @@ Installables SourceExprCommand::parseInstallables(ref<Store> store, std::vector<
+@@ -509,10 +549,14 @@ Installables SourceExprCommand::parseInstallables(ref<Store> store, std::vector<
              }
  
              try {
@@ -153,7 +151,7 @@ index 0e6a204a7..7597bffd1 100644
                          getEvalState(),
                          std::move(flakeRef),
 diff --git a/src/nix/search.cc b/src/nix/search.cc
-index 562af3151..dfa7ef258 100644
+index dac60ceba..cad70f5bb 100644
 --- a/src/nix/search.cc
 +++ b/src/nix/search.cc
 @@ -26,8 +26,9 @@ std::string wrap(std::string prefix, std::string s)
@@ -218,10 +216,10 @@ index 562af3151..dfa7ef258 100644
          std::vector<std::regex> regexes;
          std::vector<std::regex> excludeRegexes;
 diff --git a/tests/functional/flakes/flakes.sh b/tests/functional/flakes/flakes.sh
-index 7fd9dc9b5..68c2b72a0 100755
+index 8d95f6124..b7fa1e08a 100755
 --- a/tests/functional/flakes/flakes.sh
 +++ b/tests/functional/flakes/flakes.sh
-@@ -92,7 +92,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
+@@ -93,7 +93,7 @@ nix build -o "$TEST_ROOT/result" flake1#foo
  [[ -e "$TEST_ROOT/result/hello" ]]
  
  # Test packages.default.
