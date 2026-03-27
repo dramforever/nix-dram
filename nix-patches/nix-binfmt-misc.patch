@@ -110,7 +110,7 @@ index 39dad9268bcb..45a7bc147d3e 100644
  
  static AutoCloseFD fdSavedMountNamespace;
 
-From 3e9b4498b1d075964c92493d6ef7179acd587949 Mon Sep 17 00:00:00 2001
+From feae263d7061dd06ebf099a435de3c171e7ff9ac Mon Sep 17 00:00:00 2001
 From: dramforever <dramforever@live.com>
 Date: Sun, 22 Mar 2026 22:02:20 +0800
 Subject: [PATCH 2/3] libstore: Add and implement the binfmt-misc setting
@@ -132,7 +132,7 @@ case.
  3 files changed, 262 insertions(+), 3 deletions(-)
 
 diff --git a/src/libstore/include/nix/store/local-settings.hh b/src/libstore/include/nix/store/local-settings.hh
-index a320c52293c1..143ac3b9f42b 100644
+index a320c52293c1..f0bfa1321ac0 100644
 --- a/src/libstore/include/nix/store/local-settings.hh
 +++ b/src/libstore/include/nix/store/local-settings.hh
 @@ -713,6 +713,63 @@ public:
@@ -153,7 +153,7 @@ index a320c52293c1..143ac3b9f42b 100644
 +          [binfmt.d(5)]. Namely, it should be a file where each line is in the
 +          format expected by `/proc/sys/fs/binfmt_misc/register`, except that
 +          leading and trailing whitespace is removed, and empty lines and lines
-+          starting with ';' or '#' are ignored. See [Linux documentation on binfmt\_misc]
++          starting with `;` or `#` are ignored. See [Linux documentation on binfmt\_misc]
 +          for details.
 +
 +          [Linux documentation on binfmt\_misc]: https://docs.kernel.org/admin-guide/binfmt-misc.html
