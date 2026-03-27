@@ -370,79 +370,52 @@ lightweight way, I'm happy to take suggestions.
 
 ```console
 $ nix flake show github:dramforever/nix-dram
-github:dramforever/nix-dram/[...]
-├───apps
-│   ├───aarch64-linux
-│   │   ├───nix-dram: app
-│   │   └───nix-dram-progress: app
-│   ├───i686-linux
-│   │   ├───nix-dram: app
-│   │   └───nix-dram-progress: app
-│   ├───x86_64-darwin
-│   │   ├───nix-dram: app
-│   │   └───nix-dram-progress: app
-│   └───x86_64-linux
-│       ├───nix-dram: app
-│       └───nix-dram-progress: app
+git+file:///home/dram/code/nix-dram
 ├───checks
+│   ├───aarch64-darwin
+│   │   ├───nix-dram omitted (use '--all-systems' to show)
+│   │   ├───nix-nar-listing omitted (use '--all-systems' to show)
+│   │   ├───nix-search omitted (use '--all-systems' to show)
+│   │   └───nix-search-pretty omitted (use '--all-systems' to show)
 │   ├───aarch64-linux
-│   │   ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│   │   ├───nix-dram-progress: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│   │   ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
-│   │   ├───nix-search: derivation 'nix-search'
-│   │   └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
-│   ├───i686-linux
-│   │   ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│   │   ├───nix-dram-progress: derivation 'nix-dram-2.4pre20201205_a5d85d0'
+│   │   ├───nix-dram: derivation 'nix-dram-2.34.1+4'
 │   │   ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
 │   │   ├───nix-search: derivation 'nix-search'
 │   │   └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
 │   ├───x86_64-darwin
-│   │   ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│   │   ├───nix-dram-progress: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│   │   ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
-│   │   ├───nix-search: derivation 'nix-search'
-│   │   └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
+│   │   ├───nix-dram omitted (use '--all-systems' to show)
+│   │   ├───nix-nar-listing omitted (use '--all-systems' to show)
+│   │   ├───nix-search omitted (use '--all-systems' to show)
+│   │   └───nix-search-pretty omitted (use '--all-systems' to show)
 │   └───x86_64-linux
-│       ├───nix-dram: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│       ├───nix-dram-progress: derivation 'nix-dram-2.4pre20201205_a5d85d0'
-│       ├───nix-nar-listing: derivation 'nix-nar-listing-0.1.0.0'
-│       ├───nix-search: derivation 'nix-search'
-│       └───nix-search-pretty: derivation 'nix-search-pretty-0.1.0.0'
-├───defaultApp
-│   ├───aarch64-linux: app
-│   ├───i686-linux: app
-│   ├───x86_64-darwin: app
-│   └───x86_64-linux: app
-├───defaultPackage
-│   ├───aarch64-linux: package 'nix-dram-2.4pre20201205_a5d85d0'
-│   ├───i686-linux: package 'nix-dram-2.4pre20201205_a5d85d0'
-│   ├───x86_64-darwin: package 'nix-dram-2.4pre20201205_a5d85d0'
-│   └───x86_64-linux: package 'nix-dram-2.4pre20201205_a5d85d0'
+│       ├───nix-dram omitted (use '--all-systems' to show)
+│       ├───nix-nar-listing omitted (use '--all-systems' to show)
+│       ├───nix-search omitted (use '--all-systems' to show)
+│       └───nix-search-pretty omitted (use '--all-systems' to show)
 ├───overlay: Nixpkgs overlay
 └───packages
+    ├───aarch64-darwin
+    │   ├───default omitted (use '--all-systems' to show)
+    │   ├───nix-dram omitted (use '--all-systems' to show)
+    │   ├───nix-nar-listing omitted (use '--all-systems' to show)
+    │   ├───nix-search omitted (use '--all-systems' to show)
+    │   └───nix-search-pretty omitted (use '--all-systems' to show)
     ├───aarch64-linux
-    │   ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
-    │   ├───nix-dram-progress: package 'nix-dram-2.4pre20201205_a5d85d0'
-    │   ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
-    │   ├───nix-search: package 'nix-search'
-    │   └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
-    ├───i686-linux
-    │   ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
-    │   ├───nix-dram-progress: package 'nix-dram-2.4pre20201205_a5d85d0'
+    │   ├───default: package 'nix-dram-2.34.1+4'
+    │   ├───nix-dram: package 'nix-dram-2.34.1+4'
     │   ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
     │   ├───nix-search: package 'nix-search'
     │   └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
     ├───x86_64-darwin
-    │   ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
-    │   ├───nix-dram-progress: package 'nix-dram-2.4pre20201205_a5d85d0'
-    │   ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
-    │   ├───nix-search: package 'nix-search'
-    │   └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
+    │   ├───default omitted (use '--all-systems' to show)
+    │   ├───nix-dram omitted (use '--all-systems' to show)
+    │   ├───nix-nar-listing omitted (use '--all-systems' to show)
+    │   ├───nix-search omitted (use '--all-systems' to show)
+    │   └───nix-search-pretty omitted (use '--all-systems' to show)
     └───x86_64-linux
-        ├───nix-dram: package 'nix-dram-2.4pre20201205_a5d85d0'
-        ├───nix-dram-progress: package 'nix-dram-2.4pre20201205_a5d85d0'
-        ├───nix-nar-listing: package 'nix-nar-listing-0.1.0.0'
-        ├───nix-search: package 'nix-search'
-        └───nix-search-pretty: package 'nix-search-pretty-0.1.0.0'
+        ├───default omitted (use '--all-systems' to show)
+        ├───nix-dram omitted (use '--all-systems' to show)
+        ├───nix-nar-listing omitted (use '--all-systems' to show)
+        ├───nix-search omitted (use '--all-systems' to show)
+        └───nix-search-pretty omitted (use '--all-systems' to show)
 ```
