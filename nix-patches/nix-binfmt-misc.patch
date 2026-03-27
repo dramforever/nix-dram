@@ -110,7 +110,7 @@ index 39dad9268bcb..45a7bc147d3e 100644
  
  static AutoCloseFD fdSavedMountNamespace;
 
-From ebe69cf8f257da3001c982bb40efdb1b0e057f67 Mon Sep 17 00:00:00 2001
+From ad19f4ea37ccbf538802a826cb019847d31fa4bd Mon Sep 17 00:00:00 2001
 From: dramforever <dramforever@live.com>
 Date: Sun, 22 Mar 2026 22:02:20 +0800
 Subject: [PATCH 2/3] libstore: Add and implement the binfmt-misc setting
@@ -132,7 +132,7 @@ case.
  3 files changed, 236 insertions(+), 3 deletions(-)
 
 diff --git a/src/libstore/include/nix/store/local-settings.hh b/src/libstore/include/nix/store/local-settings.hh
-index a320c52293c1..fa55e9339563 100644
+index a320c52293c1..de186b8f741b 100644
 --- a/src/libstore/include/nix/store/local-settings.hh
 +++ b/src/libstore/include/nix/store/local-settings.hh
 @@ -713,6 +713,60 @@ public:
@@ -151,19 +151,19 @@ index a320c52293c1..fa55e9339563 100644
 +          `platform` is the name of the platform this item applies to, and
 +          `registration,...` is a comma-separated list of zero or more
 +          registration strings, each in the format that `/proc/sys/fs/binfmt_misc/register`
-+          accepts. See [Linux documentation on binfmt_misc] for details.
++          accepts. See [Linux documentation on binfmt\_misc] for details.
 +          Whitespace and commas in the registration strings are not supported.
 +
-+          [Linux documentation on binfmt_misc]: https://docs.kernel.org/admin-guide/binfmt-misc.html
++          [Linux documentation on binfmt\_misc]: https://docs.kernel.org/admin-guide/binfmt-misc.html
 +
 +          When building a derivation, if the platform of this derivation is
 +          configured in the `binfmt-misc` setting, then the build runs with
-+          binfmt_misc configured with and only with the interpreters from the
++          binfmt\_misc configured with and only with the interpreters from the
 +          corresponding list of registrations. Specifically, if the list is
-+          empty, then the build runs with no binfmt_misc interpreters.
++          empty, then the build runs with no binfmt\_misc interpreters.
 +
 +          This allows Nix to build derivations that are otherwise meant for
-+          foreign platforms using emulators. On systems with binfmt_misc
++          foreign platforms using emulators. On systems with binfmt\_misc
 +          interpreters configured globally, this also allows Nix to opt out of
 +          them while building derivations of the native platform, which improves
 +          purity of cross compilation. Note that in order for Nix to accept
@@ -178,7 +178,7 @@ index a320c52293c1..fa55e9339563 100644
 +          derivation's platform is configured in this setting, the build fails.
 +          See also the [`sandbox`](#conf-sandbox) setting.
 +
-+          The binfmt_misc interpreters are set up in such a way that if the `F`
++          The binfmt\_misc interpreters are set up in such a way that if the `F`
 +          flag is used, then the interpreter path is taken as the path outside
 +          the build sandbox; otherwise, the path is resolved as executables are
 +          run, inside the build sandbox. It is recommended that the interpreter
