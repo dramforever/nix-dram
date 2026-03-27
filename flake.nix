@@ -51,6 +51,11 @@
             ./nix-patches/nix-search-meta.patch
             ./nix-patches/nix-environment.patch
             ./nix-patches/nix-binfmt-misc.patch
+            (final.fetchpatch {
+              # https://github.com/NixOS/nix/pull/15572
+              url = "https://github.com/NixOS/nix/commit/2e6a03e264007df21c38be3270a4e06b27bf4599.patch";
+              hash = "sha256-DkWNcZo1E0YMaAgj+EidIMfRpsr4lIWWdWVkypJPczs=";
+            })
           ]).overrideAttrs
             (old: {
               name = "nix-dram-" + old.version;
