@@ -55,6 +55,7 @@
             ./nix-patches/nix-flake-default.patch
             ./nix-patches/nix-search-meta.patch
             ./nix-patches/nix-environment.patch
+            ./nix-patches/nix-binfmt-misc.patch
           ]).overrideAttrs
             (old: {
               name = "nix-dram-" + old.version;

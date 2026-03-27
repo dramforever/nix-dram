@@ -1,0 +1,450 @@
+From badfe4742b925c57e3ee982d41142029c4bf08a0 Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Sun, 22 Mar 2026 21:57:42 +0800
+Subject: [PATCH 1/3] libutil: Add binfmtMiscUserNamespacesSupported() check
+
+Linux supports per-user-namespace binfmt_misc since Linux 6.7 (more
+precisely, Linux kernel commit 21ca59b365c0 ("binfmt_misc: enable
+sandboxed mounts") [1]), which was only about two years ago. Add a
+check for this feature so that kernels not supporting this feature could
+be detected.
+
+[1]: https://git.kernel.org/torvalds/c/21ca59b365c091d583f36ac753eaa8baf947be6f
+---
+ .../include/nix/util/linux-namespaces.hh      |  2 +
+ src/libutil/linux/linux-namespaces.cc         | 72 +++++++++++++++++++
+ 2 files changed, 74 insertions(+)
+
+diff --git a/src/libutil/linux/include/nix/util/linux-namespaces.hh b/src/libutil/linux/include/nix/util/linux-namespaces.hh
+index 8f7ffa8df48d..eaca5c415087 100644
+--- a/src/libutil/linux/include/nix/util/linux-namespaces.hh
++++ b/src/libutil/linux/include/nix/util/linux-namespaces.hh
+@@ -32,4 +32,6 @@ bool userNamespacesSupported();
+ 
+ bool mountAndPidNamespacesSupported();
+ 
++bool binfmtMiscUserNamespacesSupported();
++
+ } // namespace nix
+diff --git a/src/libutil/linux/linux-namespaces.cc b/src/libutil/linux/linux-namespaces.cc
+index 39dad9268bcb..45a7bc147d3e 100644
+--- a/src/libutil/linux/linux-namespaces.cc
++++ b/src/libutil/linux/linux-namespaces.cc
+@@ -90,6 +90,78 @@ bool mountAndPidNamespacesSupported()
+     return res;
+ }
+ 
++bool binfmtMiscUserNamespacesSupported()
++{
++    static auto res = [&]() -> bool {
++        if (!userNamespacesSupported())
++            return false;
++
++        try {
++            auto uid = getuid();
++            auto gid = getgid();
++
++            Pid pid = startProcess(
++                [&]() {
++                    /* We can't unshare(CLONE_NEWUSER) again if our UID and GID
++                       are not mapped, so set up a proper mapping. */
++                    writeFile("/proc/self/uid_map", fmt("%d %d %d", 0, uid, 1));
++                    writeFile("/proc/self/setgroups", "deny");
++                    writeFile("/proc/self/gid_map", fmt("%d %d %d", 0, gid, 1));
++
++                    /* Make sure we don't remount the parent's /proc. */
++                    if (mount(0, "/", 0, MS_PRIVATE | MS_REC, 0) == -1)
++                        _exit(1);
++
++                    /* Mount binfmt_misc, which should create the instance
++                       associated with the current userns.
++
++                       Older kernels shouldn't even get past this, but we keep
++                       going to complete a sanity check. */
++                    if (mount("none", "/proc/sys/fs/binfmt_misc", "binfmt_misc", 0, 0) == -1)
++                        throw SysError("mounting /proc/sys/fs/binfmt_misc");
++
++                    auto dev1 = stat("/proc/sys/fs/binfmt_misc/register").st_dev;
++
++                    /* New user namespace for new binfmt_misc, and new mount
++                       namespace so that we can mount stuff while in the new
++                       userns. */
++                    if (unshare(CLONE_NEWUSER | CLONE_NEWNS) == -1)
++                        throw SysError("unsharing user and mount namespaces");
++
++                    /* Mount binfmt_misc again, which should be the instance
++                       associated with the new userns and different from the
++                       previous one */
++                    if (mount("none", "/proc/sys/fs/binfmt_misc", "binfmt_misc", 0, 0) == -1)
++                        throw SysError("mounting /proc/sys/fs/binfmt_misc again");
++
++                    auto dev2 = stat("/proc/sys/fs/binfmt_misc/register").st_dev;
++
++                    /* Two different binfmt_misc instances should have two
++                       different st_dev, since they're different filesystems. */
++                    if (dev1 == dev2)
++                        _exit(1);
++
++                    /* Creating multiple instances of binfmt_misc works. Yay! */
++                    _exit(0);
++                },
++                {.cloneFlags = CLONE_NEWNS | CLONE_NEWUSER});
++
++            if (pid.wait()) {
++                debug("binfmt_misc user namespace sandboxing does not work");
++                return false;
++            }
++
++        } catch (SysError & e) {
++            debug("binfmt_misc user namespace sandboxing does not work: %s", e.msg());
++            return false;
++        }
++
++        return true;
++    }();
++
++    return res;
++}
++
+ //////////////////////////////////////////////////////////////////////
+ 
+ static AutoCloseFD fdSavedMountNamespace;
+
+From ebe69cf8f257da3001c982bb40efdb1b0e057f67 Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Sun, 22 Mar 2026 22:02:20 +0800
+Subject: [PATCH 2/3] libstore: Add and implement the binfmt-misc setting
+
+Add the binfmt-misc setting, which configures binfmt_misc interpreters
+for the build sandbox. This allows, for example running emulated builds
+for foreign platforms without configuring binfmt_misc globally, and
+isolating cross compilation builds from systemd-wide binfmt_misc
+interpreters.
+
+One notable thing is that due to the way permissions work in the
+binfmt_misc filesystem (and /proc in general), we have to use a henious
+double-user-namespace trick to get this working in the most general
+case.
+---
+ .../include/nix/store/local-settings.hh       |  54 ++++++
+ src/libstore/unix/build/derivation-builder.cc |  18 ++
+ .../unix/build/linux-derivation-builder.cc    | 167 +++++++++++++++++-
+ 3 files changed, 236 insertions(+), 3 deletions(-)
+
+diff --git a/src/libstore/include/nix/store/local-settings.hh b/src/libstore/include/nix/store/local-settings.hh
+index a320c52293c1..fa55e9339563 100644
+--- a/src/libstore/include/nix/store/local-settings.hh
++++ b/src/libstore/include/nix/store/local-settings.hh
+@@ -713,6 +713,60 @@ public:
+      * derivation, or else returns a null pointer.
+      */
+     const ExternalBuilder * findExternalDerivationBuilderIfSupported(const Derivation & drv);
++
++    Setting<StringMap> binfmtMisc{
++        this,
++        {},
++        "binfmt-misc",
++        R"(
++          *Linux only*
++
++          A list of items, each in the form `platform=registration,...`, where
++          `platform` is the name of the platform this item applies to, and
++          `registration,...` is a comma-separated list of zero or more
++          registration strings, each in the format that `/proc/sys/fs/binfmt_misc/register`
++          accepts. See [Linux documentation on binfmt_misc] for details.
++          Whitespace and commas in the registration strings are not supported.
++
++          [Linux documentation on binfmt_misc]: https://docs.kernel.org/admin-guide/binfmt-misc.html
++
++          When building a derivation, if the platform of this derivation is
++          configured in the `binfmt-misc` setting, then the build runs with
++          binfmt_misc configured with and only with the interpreters from the
++          corresponding list of registrations. Specifically, if the list is
++          empty, then the build runs with no binfmt_misc interpreters.
++
++          This allows Nix to build derivations that are otherwise meant for
++          foreign platforms using emulators. On systems with binfmt_misc
++          interpreters configured globally, this also allows Nix to opt out of
++          them while building derivations of the native platform, which improves
++          purity of cross compilation. Note that in order for Nix to accept
++          building a derivation of a foreign platform, the platform must also be
++          added to the [`extra-platforms`](#conf-extra-platforms) setting. Also
++          note that it is not possible to deny running programs for the native
++          platform while building for an emulated foreign platform, although
++          this should rarely be an issue.
++
++          This setting only applies to sandboxed builds on Linux. On non-Linux
++          platforms, it is silently ignored. For non-sandboxed builds, If the
++          derivation's platform is configured in this setting, the build fails.
++          See also the [`sandbox`](#conf-sandbox) setting.
++
++          The binfmt_misc interpreters are set up in such a way that if the `F`
++          flag is used, then the interpreter path is taken as the path outside
++          the build sandbox; otherwise, the path is resolved as executables are
++          run, inside the build sandbox. It is recommended that the interpreter
++          be statically linked and not otherwise depend on extra files, and the
++          flag `F` be set. If this is not possible, then paths of all required
++          files need to be added to [`sandbox-paths`](#conf-sandbox-paths). It
++          is also recommended that the flags `P`, `O` be set and supported by
++          the interpreter. (See the Linux kernel documentation for the meaning
++          and use of these flags.)
++
++          This feature requires Linux kernel version 6.7 or later. If your
++          system does not have the necessary features available, building a
++          derivation where the platform is configured in this setting fails.
++        )"};
+ };
+ 
+ } // namespace nix
+diff --git a/src/libstore/unix/build/derivation-builder.cc b/src/libstore/unix/build/derivation-builder.cc
+index f81e8a42fd23..e3575f12789b 100644
+--- a/src/libstore/unix/build/derivation-builder.cc
++++ b/src/libstore/unix/build/derivation-builder.cc
+@@ -2110,6 +2110,24 @@ std::unique_ptr<DerivationBuilder, DerivationBuilderDeleter> makeDerivationBuild
+         useSandbox = false;
+     }
+ 
++    const auto & binfmtMiscMap = localSettings.binfmtMisc.get();
++    auto binfmtMiscGot = binfmtMiscMap.find(params.drv.platform);
++
++    if (!useSandbox && binfmtMiscGot != binfmtMiscMap.end()) {
++        if (localSettings.sandboxMode == smRelaxed) {
++            assert(params.drvOptions.noChroot);
++            throw Error(
++                "Derivation '%s' has '__noChroot' set, but its platform '%s' has binfmt-misc configuration. This is not supported.",
++                store.printStorePath(params.drvPath),
++                params.drv.platform);
++        } else {
++            assert(localSettings.sandboxMode == smDisabled);
++            throw Error(
++                "Derivation '%s' is for platform '%s', which has binfmt-misc configuration, but 'sandbox' is set to 'false'. This is not supported.",
++                store.printStorePath(params.drvPath),
++                params.drv.platform);
++        }
++    }
+ #endif
+ 
+     if (!useSandbox && params.drvOptions.useUidRange(params.drv))
+diff --git a/src/libstore/unix/build/linux-derivation-builder.cc b/src/libstore/unix/build/linux-derivation-builder.cc
+index 8be375c63ed6..379d348b542c 100644
+--- a/src/libstore/unix/build/linux-derivation-builder.cc
++++ b/src/libstore/unix/build/linux-derivation-builder.cc
+@@ -198,6 +198,13 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+      */
+     bool usingUserNamespace = true;
+ 
++    /**
++     * On Linux, whether we need a new binfmt_misc instance in the child user
++     * namespace, and if so what binfmt_misc registrations to set up in the new
++     * binfmt_misc instance.
++     */
++    std::optional<StringSet> binfmtMisc;
++
+     /**
+      * The cgroup of the builder, if any.
+      */
+@@ -209,6 +216,12 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+         , ChrootDerivationBuilder{store, std::move(miscMethods), std::move(params)}
+         , LinuxDerivationBuilder{store, std::move(miscMethods), std::move(params)}
+     {
++        const auto & binfmtMiscMap = store.config->getLocalSettings().binfmtMisc.get();
++        auto binfmtMiscGot = binfmtMiscMap.find(drv.platform);
++
++        // TODO Bikeshed this
++        if (binfmtMiscGot != binfmtMiscMap.end())
++            binfmtMisc = tokenizeString<StringSet>(binfmtMiscGot->second, ",");
+     }
+ 
+     uid_t sandboxUid()
+@@ -333,6 +346,17 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+ 
+         usingUserNamespace = userNamespacesSupported();
+ 
++        if (binfmtMisc) {
++            if (!usingUserNamespace)
++                throw Error(
++                    "Platform '%s' has binfmt-misc configuration, but user namespaces are not available", drv.platform);
++
++            if (!binfmtMiscUserNamespacesSupported())
++                throw Error(
++                    "Platform '%s' has binfmt-misc configuration, but the kernel does not have binfmt_misc with support for user namespaces. Please update to Linux kernel 6.7 or later.",
++                    drv.platform);
++        }
++
+         Pipe sendPid;
+         sendPid.create();
+ 
+@@ -412,12 +436,39 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+             uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
+             uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
+ 
+-            writeFile(thisProcPath / "uid_map", fmt("%d %d %d", sandboxUid(), hostUid, nrIds));
+-
+             if (!buildUser || buildUser->getUIDCount() == 1)
+                 writeFile(thisProcPath / "setgroups", "deny");
+ 
+-            writeFile(thisProcPath / "gid_map", fmt("%d %d %d", sandboxGid(), hostGid, nrIds));
++            if (needDoubleUserns()) {
++                /* NOTE: This must match what setUserDoubleUserns() does. */
++
++                std::string uid_map, gid_map;
++
++                /* In order for the unshare(CLONE_NEWUSER) that we will call in
++                   setUserDoubleUserns() to work, we must map our current UID
++                   and GID into the intermediate userns. For binfmt_misc to
++                   work, in the intermediate userns UID 0 and GID 0 must be
++                   mapped (see comment on needDoubleUserns()). This satisfies
++                   both requirements. */
++
++                uid_map += fmt("%d %d %d\n", 0, getuid(), 1);
++                gid_map += fmt("%d %d %d\n", 0, getgid(), 1);
++
++                if (buildUser) {
++                    /* If using build users, we also need to map the allocated
++                       UIDs and GIDs into the intermediate userns. Map them
++                       starting at UID 1 and GID 1. In this case, our current
++                       UID and GID won't be mapped into the final userns. */
++                    uid_map += fmt("%d %d %d", 1, buildUser->getUID(), nrIds);
++                    gid_map += fmt("%d %d %d", 1, buildUser->getGID(), nrIds);
++                }
++
++                writeFile(thisProcPath / "uid_map", uid_map);
++                writeFile(thisProcPath / "gid_map", gid_map);
++            } else {
++                writeFile(thisProcPath / "uid_map", fmt("%d %d %d", sandboxUid(), hostUid, nrIds));
++                writeFile(thisProcPath / "gid_map", fmt("%d %d %d", sandboxGid(), hostGid, nrIds));
++            }
+         } else {
+             debug("note: not using a user namespace");
+             if (!buildUser)
+@@ -609,6 +660,16 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+         if (mount("none", (chrootRootDir / "proc").c_str(), "proc", 0, 0) == -1)
+             throw SysError("mounting /proc");
+ 
++        /* If requested, set up a new binfmt_misc instance */
++        if (binfmtMisc) {
++            if (mount("none", (procPath / "sys/fs/binfmt_misc").c_str(), "binfmt_misc", 0, 0) == -1)
++                throw SysError("mounting /proc/sys/fs/binfmt_misc");
++
++            /* See comment on needDoubleUserns() to see what it takes for this to work */
++            for (auto & registration : *binfmtMisc)
++                writeFile(procPath / "sys/fs/binfmt_misc/register", registration);
++        }
++
+         /* Mount sysfs on /sys. */
+         if (buildUser && buildUser->getUIDCount() != 1) {
+             createDirs(chrootRootDir / "sys");
+@@ -695,6 +756,9 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+ 
+     void setUser() override
+     {
++        if (needDoubleUserns())
++            setUserDoubleUserns();
++
+         preserveDeathSignal([this]() {
+             /* Switch to the sandbox uid/gid in the user namespace,
+                which corresponds to the build user or calling user in
+@@ -752,6 +816,103 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+         if (!statusOk(status))
+             throw Error("could not add path '%s' to sandbox: %s", store.printStorePath(path), statusToString(status));
+     }
++
++private:
++
++    /* Mounting binfmt_misc in a userns creates a new binfmt_misc instance and
++       associates the user namespace with it, if there is no such existing
++       instance. If an existing associated instance exists it is reused.
++
++       From this point onward, new programs executed in this userns only look up
++       binfmt_misc interpreters from the associate instance. User namespaces
++       without an associated binfmt_misc instance use the same instance as its
++       parent, if there is one, which may be recursively reusing the instance
++       from some further ancestor.
++
++       The files in the binfmt_misc filesystem associated with a userns are
++       owned by UID 0 and GID 0 in that userns. This means that for such files
++       to be writable, even to a process with CAP_DAC_OVERRIDE in that userns,
++       UID 0 and GID 0 must be mapped. In the unprivileged case, in particular,
++       since we can only map one UID and one GID, we can *only* map UID 0 and
++       GID 0.
++
++       With the uid-range feature, the build process running as UID 0 and GID 0
++       is intended, so we don't do anything special for that case. However,
++       normally running builds as root is probably not a good idea. Therefore,
++       in setUserDoubleUserns() we unshare(CLONE_NEWUSER) again, and map
++       sandboxUid() and sandboxGid(). This way the build sees the expected UID
++       and GID.
++
++       However, note that if we *only* need to mount binfmt_misc, and don't need
++       to write to /proc/sys/fs/binfmt_misc/register, we don't have a problem.
++       We can still mount /proc/sys/fs/binfmt_misc which creates an instance
++       associated with our sandbox userns, even though the files in it are
++       completely inaccessible. Therefore, we also don't need this trick if
++       binfmtMisc is supposed to be set up but it's empty. This is useful for
++       opting out of the global binfmt_misc in Nix builds.
++
++       See Linux commit "binfmt_misc: enable sandboxed mounts":
++       https://git.kernel.org/torvalds/c/21ca59b365c0 */
++
++    bool needDoubleUserns()
++    {
++        return binfmtMisc && !binfmtMisc->empty() && (sandboxUid() != 0 || sandboxGid() != 0);
++    }
++
++    void setUserDoubleUserns()
++    {
++        Pipe uidMapSync;
++        uidMapSync.create();
++
++        /* At this point, we still have the original UID and GID, we're in the
++           intermediate user namespace. We need to map UID 0 and GID 0 into
++           sandboxUid() and sandboxGid() after calling unshare(CLONE_NEWUSER) to
++           create the actual sandbox userns. But after unshare(CLONE_NEWUSER) we
++           lose the privileges to write uid_map and gid_map. It's also too late
++           to ask the parent process for help now. Instead, spawn a child
++           process as a helper to do that. */
++
++        Pid helper = startProcess([&]() {
++            uidMapSync.writeSide.close();
++
++            /* Wait for parent to unshare(CLONE_NEWUSER) */
++            if (FdSource(uidMapSync.readSide.get()).drain() != "1")
++                _exit(1);
++
++            uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
++
++            /* Parent process was spawned with CLONE_NEWPID, so it's PID 1. This
++               gets rid of any possible TOCTTOU problems as if the parent exits
++               early, the kernel will kill the child too. */
++            assert(getppid() == 1);
++
++            if (!buildUser || buildUser->getUIDCount() == 1)
++                writeFile("/proc/1/setgroups", "deny");
++
++            /* See comment back when the intermediate userns's uid_map and
++               gid_map were written.
++
++               NOTE: This must match how it was mapped back there. */
++            int intermediateId = buildUser ? 1 : 0;
++
++            writeFile("/proc/1/uid_map", fmt("%d %d %d", sandboxUid(), (uid_t) intermediateId, nrIds));
++            writeFile("/proc/1/gid_map", fmt("%d %d %d", sandboxGid(), (gid_t) intermediateId, nrIds));
++
++            _exit(0);
++        });
++
++        uidMapSync.readSide.close();
++
++        if (unshare(CLONE_NEWUSER) == -1)
++            throw SysError("unsharing user namespace");
++
++        /* Okay, time for helper to write uid_map and gid_map */
++        writeFull(uidMapSync.writeSide.get(), "1");
++        uidMapSync.writeSide.close();
++
++        if (helper.wait() != 0)
++            throw Error("unable to set uid_map and gid_map");
++    }
+ };
+ 
+ } // namespace nix

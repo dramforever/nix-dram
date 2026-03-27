@@ -76,6 +76,10 @@ There are three patches over Nix in this repository:
   This is mainly used to support `nix-search-pretty` so that it has more
   information to work with, but could support other tooling as well.
 
+- `nix-binfmt-misc.patch`: Adds the option `binfmt-misc` to configure
+  binfmt\_misc interpreters in the build sandbox. See the pull request
+  [#15539](https://github.com/NixOS/nix/pull/15539) for more.
+
 There is a patch that was removed:
 
 - `nix-flake-http-redirect.patch`: This arose from a thought on how we could
