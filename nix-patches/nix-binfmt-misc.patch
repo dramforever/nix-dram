@@ -110,7 +110,7 @@ index 39dad9268bcb..45a7bc147d3e 100644
  
  static AutoCloseFD fdSavedMountNamespace;
 
-From ad19f4ea37ccbf538802a826cb019847d31fa4bd Mon Sep 17 00:00:00 2001
+From 3e9b4498b1d075964c92493d6ef7179acd587949 Mon Sep 17 00:00:00 2001
 From: dramforever <dramforever@live.com>
 Date: Sun, 22 Mar 2026 22:02:20 +0800
 Subject: [PATCH 2/3] libstore: Add and implement the binfmt-misc setting
@@ -126,16 +126,16 @@ binfmt_misc filesystem (and /proc in general), we have to use a henious
 double-user-namespace trick to get this working in the most general
 case.
 ---
- .../include/nix/store/local-settings.hh       |  54 ++++++
+ .../include/nix/store/local-settings.hh       |  57 ++++++
  src/libstore/unix/build/derivation-builder.cc |  18 ++
- .../unix/build/linux-derivation-builder.cc    | 167 +++++++++++++++++-
- 3 files changed, 236 insertions(+), 3 deletions(-)
+ .../unix/build/linux-derivation-builder.cc    | 190 +++++++++++++++++-
+ 3 files changed, 262 insertions(+), 3 deletions(-)
 
 diff --git a/src/libstore/include/nix/store/local-settings.hh b/src/libstore/include/nix/store/local-settings.hh
-index a320c52293c1..de186b8f741b 100644
+index a320c52293c1..143ac3b9f42b 100644
 --- a/src/libstore/include/nix/store/local-settings.hh
 +++ b/src/libstore/include/nix/store/local-settings.hh
-@@ -713,6 +713,60 @@ public:
+@@ -713,6 +713,63 @@ public:
       * derivation, or else returns a null pointer.
       */
      const ExternalBuilder * findExternalDerivationBuilderIfSupported(const Derivation & drv);
@@ -147,23 +147,26 @@ index a320c52293c1..de186b8f741b 100644
 +        R"(
 +          *Linux only*
 +
-+          A list of items, each in the form `platform=registration,...`, where
-+          `platform` is the name of the platform this item applies to, and
-+          `registration,...` is a comma-separated list of zero or more
-+          registration strings, each in the format that `/proc/sys/fs/binfmt_misc/register`
-+          accepts. See [Linux documentation on binfmt\_misc] for details.
-+          Whitespace and commas in the registration strings are not supported.
++          A list of items, each in the form `platform=file` or `platform=`,
++          where `platform` is the name of the platform this item applies to, and
++          `file` is the path to a file in the format documented in Systemd
++          [binfmt.d(5)]. Namely, it should be a file where each line is in the
++          format expected by `/proc/sys/fs/binfmt_misc/register`, except that
++          leading and trailing whitespace is removed, and empty lines and lines
++          starting with ';' or '#' are ignored. See [Linux documentation on binfmt\_misc]
++          for details.
 +
 +          [Linux documentation on binfmt\_misc]: https://docs.kernel.org/admin-guide/binfmt-misc.html
++          [binfmt.d(5)]: https://freedesktop.org/software/systemd/man/latest/binfmt.d.html
 +
 +          When building a derivation, if the platform of this derivation is
 +          configured in the `binfmt-misc` setting, then the build runs with
 +          binfmt\_misc configured with and only with the interpreters from the
-+          corresponding list of registrations. Specifically, if the list is
-+          empty, then the build runs with no binfmt\_misc interpreters.
++          configuration file. If the file is not specified, the build runs with
++          no binfmt\_misc interpreters.
 +
 +          This allows Nix to build derivations that are otherwise meant for
-+          foreign platforms using emulators. On systems with binfmt\_misc
++          foreign platforms using emulators. Also, on systems with binfmt\_misc
 +          interpreters configured globally, this also allows Nix to opt out of
 +          them while building derivations of the native platform, which improves
 +          purity of cross compilation. Note that in order for Nix to accept
@@ -226,10 +229,37 @@ index f81e8a42fd23..e3575f12789b 100644
  
      if (!useSandbox && params.drvOptions.useUidRange(params.drv))
 diff --git a/src/libstore/unix/build/linux-derivation-builder.cc b/src/libstore/unix/build/linux-derivation-builder.cc
-index 8be375c63ed6..379d348b542c 100644
+index 8be375c63ed6..4fd15740e23e 100644
 --- a/src/libstore/unix/build/linux-derivation-builder.cc
 +++ b/src/libstore/unix/build/linux-derivation-builder.cc
-@@ -198,6 +198,13 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -176,6 +176,26 @@ struct LinuxDerivationBuilder : virtual DerivationBuilderImpl
+     }
+ };
+ 
++/* https://freedesktop.org/software/systemd/man/latest/binfmt.d.html */
++static StringSet parseBinfmtMiscConf(const std::string & conf)
++{
++    StringSet result;
++
++    for (auto line : tokenizeString<std::vector<std::string>>(conf, "\n")) {
++        /* Undocumented, but systemd-binfmt trims lines first as well:
++           https://github.com/systemd/systemd/blob/v259/src/binfmt/binfmt.c#L86 */
++        line = trim(line);
++
++        /* "Empty lines and lines beginning with ";" and "#" are ignored." */
++        if (line.empty() || line[0] == ';' || line[0] == '#')
++            continue;
++
++        result.emplace(line);
++    }
++
++    return result;
++}
++
+ static const std::filesystem::path procPath = "/proc";
+ 
+ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBuilder
+@@ -198,6 +218,13 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
       */
      bool usingUserNamespace = true;
  
@@ -243,20 +273,23 @@ index 8be375c63ed6..379d348b542c 100644
      /**
       * The cgroup of the builder, if any.
       */
-@@ -209,6 +216,12 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -209,6 +236,15 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
          , ChrootDerivationBuilder{store, std::move(miscMethods), std::move(params)}
          , LinuxDerivationBuilder{store, std::move(miscMethods), std::move(params)}
      {
 +        const auto & binfmtMiscMap = store.config->getLocalSettings().binfmtMisc.get();
 +        auto binfmtMiscGot = binfmtMiscMap.find(drv.platform);
 +
-+        // TODO Bikeshed this
-+        if (binfmtMiscGot != binfmtMiscMap.end())
-+            binfmtMisc = tokenizeString<StringSet>(binfmtMiscGot->second, ",");
++        if (binfmtMiscGot != binfmtMiscMap.end()) {
++            if (binfmtMiscGot->second.empty())
++                binfmtMisc = StringSet{};
++            else
++                binfmtMisc = parseBinfmtMiscConf(readFile(binfmtMiscGot->second));
++        }
      }
  
      uid_t sandboxUid()
-@@ -333,6 +346,17 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -333,6 +369,17 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
  
          usingUserNamespace = userNamespacesSupported();
  
@@ -274,7 +307,7 @@ index 8be375c63ed6..379d348b542c 100644
          Pipe sendPid;
          sendPid.create();
  
-@@ -412,12 +436,39 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -412,12 +459,39 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
              uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
              uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
  
@@ -317,7 +350,7 @@ index 8be375c63ed6..379d348b542c 100644
          } else {
              debug("note: not using a user namespace");
              if (!buildUser)
-@@ -609,6 +660,16 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -609,6 +683,16 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
          if (mount("none", (chrootRootDir / "proc").c_str(), "proc", 0, 0) == -1)
              throw SysError("mounting /proc");
  
@@ -334,7 +367,7 @@ index 8be375c63ed6..379d348b542c 100644
          /* Mount sysfs on /sys. */
          if (buildUser && buildUser->getUIDCount() != 1) {
              createDirs(chrootRootDir / "sys");
-@@ -695,6 +756,9 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -695,6 +779,9 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
  
      void setUser() override
      {
@@ -344,7 +377,7 @@ index 8be375c63ed6..379d348b542c 100644
          preserveDeathSignal([this]() {
              /* Switch to the sandbox uid/gid in the user namespace,
                 which corresponds to the build user or calling user in
-@@ -752,6 +816,103 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -752,6 +839,103 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
          if (!statusOk(status))
              throw Error("could not add path '%s' to sandbox: %s", store.printStorePath(path), statusToString(status));
      }
