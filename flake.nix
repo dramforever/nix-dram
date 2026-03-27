@@ -4,11 +4,6 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  nixConfig = {
-    extra-substituters = [ "https://dram.cachix.org" ];
-    extra-trusted-public-keys = [ "dram.cachix.org-1:baoy1SXpwYdKbqdTbfKGTKauDDeDlHhUpC+QuuILEMY=" ];
-  };
-
   outputs =
     {
       self,
