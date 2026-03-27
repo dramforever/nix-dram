@@ -1,5 +1,13 @@
-{ mkDerivation, aeson, base, bytestring, lib, prettyprinter
-, prettyprinter-ansi-terminal, text, unordered-containers
+{
+  mkDerivation,
+  aeson,
+  base,
+  bytestring,
+  lib,
+  prettyprinter,
+  prettyprinter-ansi-terminal,
+  text,
+  unordered-containers,
 }:
 mkDerivation {
   pname = "nix-nar-listing";
@@ -8,9 +16,18 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson base bytestring prettyprinter prettyprinter-ansi-terminal
-    text unordered-containers
+    aeson
+    base
+    bytestring
+    prettyprinter
+    prettyprinter-ansi-terminal
+    text
+    unordered-containers
   ];
-  executableHaskellDepends = [ base bytestring text ];
+  executableHaskellDepends = [
+    base
+    bytestring
+    text
+  ];
   license = lib.licenses.bsd3;
 }
