@@ -1,7 +1,5 @@
 # `nix-dram`
 
-![Build status](https://github.com/dramforever/nix-dram/actions/workflows/check.yml/badge.svg)
-
 *Nix with a modified frontend, by dramforever*
 
 ## Nix Flake
@@ -17,12 +15,6 @@ The modified Nix is available as `packages.default`:
 ```console
 $ nix run github:dramforever/nix-dram -- --version
 nix (Nix) 2.4pre20201205_a5d85d0
-```
-
-The binary cache of this flake is available on Cachix. Set it up with:
-
-```console
-$ cachix use dram
 ```
 
 Check out [a list of the contents of this flake](#contents-of-this-flake).
