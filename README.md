@@ -12,7 +12,7 @@ This repository contains a Nix Flake. To use it, use the following Flake URL:
 github:dramforever/nix-dram
 ```
 
-The modified Nix is available as `defaultApp`:
+The modified Nix is available as `packages.default`:
 
 ```console
 $ nix run github:dramforever/nix-dram -- --version
