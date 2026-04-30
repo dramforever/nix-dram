@@ -1,3 +1,12 @@
+From 39a409cfd113afa71e88cdc1d8f745f49ed36598 Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Mon, 31 Jan 2022 21:28:31 +0800
+Subject: [PATCH] Generate metadata for nix search
+
+---
+ src/nix/search.cc | 5 +++++
+ 1 file changed, 5 insertions(+)
+
 diff --git a/src/nix/search.cc b/src/nix/search.cc
 index dac60ceba..b72dea4bd 100644
 --- a/src/nix/search.cc
@@ -25,3 +34,6 @@ index dac60ceba..b72dea4bd 100644
                              };
                          } else {
                              if (results > 1)
+-- 
+2.53.0
+

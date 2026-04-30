@@ -47,10 +47,10 @@
         make-nix-dram =
           { nix }:
           (nix.appendPatches [
-            ./nix-patches/nix-flake-default.patch
-            ./nix-patches/nix-search-meta.patch
-            ./nix-patches/nix-environment.patch
-            ./nix-patches/nix-binfmt-misc.patch
+            ./nix-patches/nix-dram-default-flake.patch
+            ./nix-patches/nix-dram-search-meta.patch
+            ./nix-patches/nix-dram-environment.patch
+            ./nix-patches/nix-dram-binfmt-misc.patch
           ]).overrideAttrs
             (old: {
               name = "nix-dram-" + old.version;

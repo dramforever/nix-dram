@@ -55,18 +55,21 @@ detailed explanation follows.
 
 ## What's new?
 
-There are three patches over Nix in this repository:
+There are four patches over Nix in this repository:
 
-- `nix-flake-default.patch`: This changes the Nix CLI so that it parses
+- `nix-dram-default-flake.patch`: This changes the Nix CLI so that it parses
   `INSTALLABLE` arguments differently. The usage of the command `nix search` was
   also changed. See below for details.
 
-- `nix-search-meta.patch`: This is not a very user-visible change. It basically
+- `nix-dram-search-meta.patch`: This is not a very user-visible change. It basically
   alters `nix search` so that the `--json` option now dumps the entire `meta`
   attribute of the package.
 
   This is mainly used to support `nix-search-pretty` so that it has more
   information to work with, but could support other tooling as well.
+
+- `nix-dram-environment.patch`: Adds the option `environment` to allow trusted
+  users to set environment variables on the daemon.
 
 - `nix-binfmt-misc.patch`: Adds the option `binfmt-misc` to configure
   binfmt\_misc interpreters in the build sandbox. See the pull request

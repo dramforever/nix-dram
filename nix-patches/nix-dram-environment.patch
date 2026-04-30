@@ -1,3 +1,18 @@
+From eef76bba33ecc893c10606ec4b153c988f843182 Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Sun, 18 Jun 2023 18:45:30 +0800
+Subject: [PATCH] Add environment config
+
+---
+ src/libstore/globals.cc                   | 56 +++++++++++++++++++++++
+ src/libstore/include/nix/store/globals.hh | 35 ++++++++++++++
+ tests/functional/environment.nix          | 16 +++++++
+ tests/functional/environment.sh           | 43 +++++++++++++++++
+ tests/functional/meson.build              |  1 +
+ 5 files changed, 151 insertions(+)
+ create mode 100644 tests/functional/environment.nix
+ create mode 100644 tests/functional/environment.sh
+
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
 index 2e262aec8..89673518c 100644
 --- a/src/libstore/globals.cc
@@ -208,3 +223,6 @@ index bc4d2643e..a9e3aa890 100644
      ],
      'workdir' : meson.current_source_dir(),
    },
+-- 
+2.53.0
+

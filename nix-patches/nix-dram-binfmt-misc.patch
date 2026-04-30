@@ -1,7 +1,7 @@
-From badfe4742b925c57e3ee982d41142029c4bf08a0 Mon Sep 17 00:00:00 2001
+From 48f805f064844ca4f5e9977c3467a717a160784c Mon Sep 17 00:00:00 2001
 From: dramforever <dramforever@live.com>
 Date: Sun, 22 Mar 2026 21:57:42 +0800
-Subject: [PATCH 1/3] libutil: Add binfmtMiscUserNamespacesSupported() check
+Subject: [PATCH 1/2] libutil: Add binfmtMiscUserNamespacesSupported() check
 
 Linux supports per-user-namespace binfmt_misc since Linux 6.7 (more
 precisely, Linux kernel commit 21ca59b365c0 ("binfmt_misc: enable
@@ -16,7 +16,7 @@ be detected.
  2 files changed, 74 insertions(+)
 
 diff --git a/src/libutil/linux/include/nix/util/linux-namespaces.hh b/src/libutil/linux/include/nix/util/linux-namespaces.hh
-index 8f7ffa8df48d..eaca5c415087 100644
+index 8f7ffa8df..eaca5c415 100644
 --- a/src/libutil/linux/include/nix/util/linux-namespaces.hh
 +++ b/src/libutil/linux/include/nix/util/linux-namespaces.hh
 @@ -32,4 +32,6 @@ bool userNamespacesSupported();
@@ -27,10 +27,10 @@ index 8f7ffa8df48d..eaca5c415087 100644
 +
  } // namespace nix
 diff --git a/src/libutil/linux/linux-namespaces.cc b/src/libutil/linux/linux-namespaces.cc
-index 39dad9268bcb..45a7bc147d3e 100644
+index 83a800e47..560e1f60f 100644
 --- a/src/libutil/linux/linux-namespaces.cc
 +++ b/src/libutil/linux/linux-namespaces.cc
-@@ -90,6 +90,78 @@ bool mountAndPidNamespacesSupported()
+@@ -87,6 +87,78 @@ bool mountAndPidNamespacesSupported()
      return res;
  }
  
@@ -109,11 +109,14 @@ index 39dad9268bcb..45a7bc147d3e 100644
  //////////////////////////////////////////////////////////////////////
  
  static AutoCloseFD fdSavedMountNamespace;
+-- 
+2.53.0
 
-From feae263d7061dd06ebf099a435de3c171e7ff9ac Mon Sep 17 00:00:00 2001
+
+From 57f7ecac492ed45f6eff755b34e52ecf08a535f4 Mon Sep 17 00:00:00 2001
 From: dramforever <dramforever@live.com>
 Date: Sun, 22 Mar 2026 22:02:20 +0800
-Subject: [PATCH 2/3] libstore: Add and implement the binfmt-misc setting
+Subject: [PATCH 2/2] libstore: Add and implement the binfmt-misc setting
 
 Add the binfmt-misc setting, which configures binfmt_misc interpreters
 for the build sandbox. This allows, for example running emulated builds
@@ -132,7 +135,7 @@ case.
  3 files changed, 262 insertions(+), 3 deletions(-)
 
 diff --git a/src/libstore/include/nix/store/local-settings.hh b/src/libstore/include/nix/store/local-settings.hh
-index a320c52293c1..f0bfa1321ac0 100644
+index af7eccdf4..80652e3c5 100644
 --- a/src/libstore/include/nix/store/local-settings.hh
 +++ b/src/libstore/include/nix/store/local-settings.hh
 @@ -713,6 +713,63 @@ public:
@@ -200,10 +203,10 @@ index a320c52293c1..f0bfa1321ac0 100644
  
  } // namespace nix
 diff --git a/src/libstore/unix/build/derivation-builder.cc b/src/libstore/unix/build/derivation-builder.cc
-index f81e8a42fd23..e3575f12789b 100644
+index fc877dd56..8a75817e8 100644
 --- a/src/libstore/unix/build/derivation-builder.cc
 +++ b/src/libstore/unix/build/derivation-builder.cc
-@@ -2110,6 +2110,24 @@ std::unique_ptr<DerivationBuilder, DerivationBuilderDeleter> makeDerivationBuild
+@@ -2126,6 +2126,24 @@ std::unique_ptr<DerivationBuilder, DerivationBuilderDeleter> makeDerivationBuild
          useSandbox = false;
      }
  
@@ -229,10 +232,10 @@ index f81e8a42fd23..e3575f12789b 100644
  
      if (!useSandbox && params.drvOptions.useUidRange(params.drv))
 diff --git a/src/libstore/unix/build/linux-derivation-builder.cc b/src/libstore/unix/build/linux-derivation-builder.cc
-index 8be375c63ed6..4fd15740e23e 100644
+index 476baabe2..e593db08a 100644
 --- a/src/libstore/unix/build/linux-derivation-builder.cc
 +++ b/src/libstore/unix/build/linux-derivation-builder.cc
-@@ -176,6 +176,26 @@ struct LinuxDerivationBuilder : virtual DerivationBuilderImpl
+@@ -275,6 +275,26 @@ struct LinuxDerivationBuilder : virtual DerivationBuilderImpl
      }
  };
  
@@ -259,7 +262,7 @@ index 8be375c63ed6..4fd15740e23e 100644
  static const std::filesystem::path procPath = "/proc";
  
  struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBuilder
-@@ -198,6 +218,13 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -297,6 +317,13 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
       */
      bool usingUserNamespace = true;
  
@@ -273,7 +276,7 @@ index 8be375c63ed6..4fd15740e23e 100644
      /**
       * The cgroup of the builder, if any.
       */
-@@ -209,6 +236,15 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -308,6 +335,15 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
          , ChrootDerivationBuilder{store, std::move(miscMethods), std::move(params)}
          , LinuxDerivationBuilder{store, std::move(miscMethods), std::move(params)}
      {
@@ -289,7 +292,7 @@ index 8be375c63ed6..4fd15740e23e 100644
      }
  
      uid_t sandboxUid()
-@@ -333,6 +369,17 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -432,6 +468,17 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
  
          usingUserNamespace = userNamespacesSupported();
  
@@ -307,7 +310,7 @@ index 8be375c63ed6..4fd15740e23e 100644
          Pipe sendPid;
          sendPid.create();
  
-@@ -412,12 +459,39 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -511,12 +558,39 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
              uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
              uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
  
@@ -350,7 +353,7 @@ index 8be375c63ed6..4fd15740e23e 100644
          } else {
              debug("note: not using a user namespace");
              if (!buildUser)
-@@ -609,6 +683,16 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -714,6 +788,16 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
          if (mount("none", (chrootRootDir / "proc").c_str(), "proc", 0, 0) == -1)
              throw SysError("mounting /proc");
  
@@ -367,7 +370,7 @@ index 8be375c63ed6..4fd15740e23e 100644
          /* Mount sysfs on /sys. */
          if (buildUser && buildUser->getUIDCount() != 1) {
              createDirs(chrootRootDir / "sys");
-@@ -695,6 +779,9 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+@@ -800,6 +884,9 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
  
      void setUser() override
      {
@@ -377,9 +380,9 @@ index 8be375c63ed6..4fd15740e23e 100644
          preserveDeathSignal([this]() {
              /* Switch to the sandbox uid/gid in the user namespace,
                 which corresponds to the build user or calling user in
-@@ -752,6 +839,103 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
-         if (!statusOk(status))
-             throw Error("could not add path '%s' to sandbox: %s", store.printStorePath(path), statusToString(status));
+@@ -857,6 +944,103 @@ struct ChrootLinuxDerivationBuilder : ChrootDerivationBuilder, LinuxDerivationBu
+         if (status != 0)
+             throw Error("could not add path '%s' to sandbox", store.printStorePath(path));
      }
 +
 +private:
@@ -481,3 +484,6 @@ index 8be375c63ed6..4fd15740e23e 100644
  };
  
  } // namespace nix
+-- 
+2.53.0
+

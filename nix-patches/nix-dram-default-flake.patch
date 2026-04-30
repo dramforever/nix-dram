@@ -1,3 +1,16 @@
+From 0ea69563f744eb9830e672c657e16a4fbf7eec71 Mon Sep 17 00:00:00 2001
+From: dramforever <dramforever@live.com>
+Date: Mon, 19 Jul 2021 22:06:31 +0800
+Subject: [PATCH] Support for default flake in new CLI
+
+---
+ src/libcmd/include/nix/cmd/installables.hh | 11 ++++
+ src/libcmd/installables.cc                 | 62 ++++++++++++++++++----
+ src/nix/search.cc                          | 32 +++++++++--
+ tests/functional/flakes/flakes.sh          |  2 +-
+ tests/functional/search.sh                 | 27 +++++-----
+ 5 files changed, 107 insertions(+), 27 deletions(-)
+
 diff --git a/src/libcmd/include/nix/cmd/installables.hh b/src/libcmd/include/nix/cmd/installables.hh
 index 530334e03..2f5729c65 100644
 --- a/src/libcmd/include/nix/cmd/installables.hh
@@ -289,3 +302,6 @@ index 3fadecd02..604926718 100755
  
  ## Tests for --exclude
  (( $(nix search -f search.nix ^ -e hello | grep -c hello) == 0 ))
+-- 
+2.53.0
+
