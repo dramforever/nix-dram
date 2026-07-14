@@ -1,23 +1,8 @@
-From eef76bba33ecc893c10606ec4b153c988f843182 Mon Sep 17 00:00:00 2001
-From: dramforever <dramforever@live.com>
-Date: Sun, 18 Jun 2023 18:45:30 +0800
-Subject: [PATCH] Add environment config
-
----
- src/libstore/globals.cc                   | 56 +++++++++++++++++++++++
- src/libstore/include/nix/store/globals.hh | 35 ++++++++++++++
- tests/functional/environment.nix          | 16 +++++++
- tests/functional/environment.sh           | 43 +++++++++++++++++
- tests/functional/meson.build              |  1 +
- 5 files changed, 151 insertions(+)
- create mode 100644 tests/functional/environment.nix
- create mode 100644 tests/functional/environment.sh
-
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index 2e262aec8..89673518c 100644
+index ea76326bf..4845bedcf 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -140,6 +140,8 @@ void loadConfFile(AbstractConfig & config)
+@@ -123,6 +123,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
      config.resetOverridden();
  
@@ -26,7 +11,7 @@ index 2e262aec8..89673518c 100644
      auto files = nixUserConfFiles();
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          applyConfigFile(file->string());
-@@ -427,6 +429,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+@@ -426,6 +428,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
              throw UsageError("configuration setting '%s' should be 'auto' or an integer", name);
      }
  }
@@ -88,10 +73,10 @@ index 2e262aec8..89673518c 100644
  template<>
  LocalSettings::ExternalBuilders BaseSetting<LocalSettings::ExternalBuilders>::parse(const std::string & str) const
 diff --git a/src/libstore/include/nix/store/globals.hh b/src/libstore/include/nix/store/globals.hh
-index 3f2f122eb..49dc92417 100644
+index 34eab7f88..536a52f1b 100644
 --- a/src/libstore/include/nix/store/globals.hh
 +++ b/src/libstore/include/nix/store/globals.hh
-@@ -99,6 +99,24 @@ struct NarInfoDiskCacheSettings : public virtual Config
+@@ -98,6 +98,24 @@ public:
          )"};
  };
  
@@ -116,7 +101,7 @@ index 3f2f122eb..49dc92417 100644
  class Settings : public virtual Config,
                   private LocalSettings,
                   private LogFileSettings,
-@@ -423,6 +441,23 @@ public:
+@@ -425,6 +443,23 @@ public:
       * Get the options needed for profile directory functions.
       */
      ProfileDirsOptions getProfileDirsOptions() const;
@@ -212,17 +197,14 @@ index 000000000..08c5a6e3f
 +
 +killDaemon
 diff --git a/tests/functional/meson.build b/tests/functional/meson.build
-index bc4d2643e..a9e3aa890 100644
+index 8fdaf4ffe..0a4e333e5 100644
 --- a/tests/functional/meson.build
 +++ b/tests/functional/meson.build
-@@ -178,6 +178,7 @@ suites = [
-       'help.sh',
-       'symlinks.sh',
-       'external-builders.sh',
+@@ -181,6 +181,7 @@ suites = [
+       'user-envs-migration.sh',
+       'user-envs.sh',
+       'why-depends.sh',
 +      'environment.sh',
      ],
      'workdir' : meson.current_source_dir(),
    },
--- 
-2.53.0
-
