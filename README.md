@@ -210,64 +210,6 @@ using [termtosvg]):
 `nix-search` is a wrapper around `nix-search-pretty` with similar usage to `nix
 search`.
 
-### Locked HTTP redirects in Flake inputs
-
-(**Update**: This is already merged into Nix, as PR
-[#4595](https://github.com/NixOS/nix/pull/4595))
-
-(An issue was discovered with this approach, namely
-[#4672](https://github.com/NixOS/nix/issues/4672), so this might end up getting
-reverted. Either case, this patch no longer belongs in nix-dram.)
-
-(Refer to [a post on Discourse][http-redir] for discussion.)
-
-[http-redir]: https://discourse.nixos.org/t/future-of-channels-and-channels-nixos-org-in-a-flakes-world/11563
-
-How could we refer to good old channels in a Flake URL? Here's a possible way
-that I thought of:
-
-1. When a user specifies an `http`/`https` URL, and it leads to (possibly
-   several) redirects, we instead record the *final redirection destination* in
-   `flake.lock`.
-2. When a `flake.lock` is consulted to download the tarball, the URL in
-   `flake.lock` is used.
-
-This way specifying:
-
-```nix
-inputs.nixpkgs.url = "https://nixos.org/channels/nixos-unstable/nixexprs.tar.xz";
-```
-
-Would actually just work, as instead of failing with an invalid hash whenever
-`nixos-unstable` updates, it saves the redirected URL which points to a stable
-version. `flake.nix` would look something like this:
-
-```jsonc
-{
-  "nodes": {
-    "nixpkgs": {
-      "locked": {
-        "narHash": "sha256-N1qI50AkeTSBp1ffUCHrcK2re52wrn6euFFGGvFa2iw=",
-        "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/unstable/nixos-21.05pre269929.ff96a0fa563/nixexprs.tar.xz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://nixos.org/channels/nixos-unstable/nixexprs.tar.xz"
-      }
-    },
-    // ...
-}
-```
-
-This way, older versions of Nix seeing this new lock file would just behave as
-if someone used `--override-input`, and newer versions of Nix seeing the old
-lock file with the pre-redirection URL would simply migrate it over when `nix
-flake update --update-input` is used.
-
-A major concern would be whether this redirection is actually part of the
-intended interface of channels.nixos.org.
-
 ## More on the design
 
 In the usual version of `nixFlakes`, it is in fact a conscious design choice
