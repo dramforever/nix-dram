@@ -1,8 +1,8 @@
 diff --git a/src/libstore/globals.cc b/src/libstore/globals.cc
-index ea76326bf..4845bedcf 100644
+index 5e6240884..239cc6730 100644
 --- a/src/libstore/globals.cc
 +++ b/src/libstore/globals.cc
-@@ -123,6 +123,8 @@ void loadConfFile(AbstractConfig & config)
+@@ -124,6 +124,8 @@ void loadConfFile(AbstractConfig & config)
         ~/.nix/nix.conf or the command line. */
      config.resetOverridden();
  
@@ -11,7 +11,7 @@ index ea76326bf..4845bedcf 100644
      auto files = nixUserConfFiles();
      for (auto file = files.rbegin(); file != files.rend(); file++) {
          applyConfigFile(file->string());
-@@ -426,6 +428,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
+@@ -427,6 +429,60 @@ unsigned int MaxBuildJobsSetting::parse(const std::string & str) const
              throw UsageError("configuration setting '%s' should be 'auto' or an integer", name);
      }
  }

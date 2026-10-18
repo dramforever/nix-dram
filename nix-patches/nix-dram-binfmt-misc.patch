@@ -111,7 +111,7 @@ index bee6e4659..62a3750b2 100644
  
  } // namespace nix
 diff --git a/src/libstore/linux/build/linux-derivation-builder.cc b/src/libstore/linux/build/linux-derivation-builder.cc
-index 310f796de..f439a4d19 100644
+index 310f796de..03479bfee 100644
 --- a/src/libstore/linux/build/linux-derivation-builder.cc
 +++ b/src/libstore/linux/build/linux-derivation-builder.cc
 @@ -394,6 +394,26 @@ static void doBind(
@@ -261,10 +261,10 @@ index 310f796de..f439a4d19 100644
 +   If an existing associated instance exists it is reused.
 +
 +   From this point onward, new programs executed in this userns only look up
-+   binfmt_misc interpreters from the associate instance. User namespaces without
-+   an associated binfmt_misc instance use the same instance as its parent, if
-+   there is one, which may be recursively reusing the instance from some further
-+   ancestor.
++   binfmt_misc interpreters from the associated instance. User namespaces
++   without an associated binfmt_misc instance use the same instance as its
++   parent, if there is one, which may be recursively reusing the instance from
++   some further ancestor.
 +
 +   The files in the binfmt_misc filesystem associated with a userns are owned by
 +   UID 0 and GID 0 in that userns. This means that for such files to be
@@ -351,13 +351,14 @@ index 310f796de..f439a4d19 100644
 +
  } // namespace nix
 diff --git a/src/libstore/unix/build/derivation-builder.cc b/src/libstore/unix/build/derivation-builder.cc
-index 3b02dfc4f..7a8f97632 100644
+index 386d3f863..692823bc9 100644
 --- a/src/libstore/unix/build/derivation-builder.cc
 +++ b/src/libstore/unix/build/derivation-builder.cc
-@@ -1794,6 +1794,24 @@ std::unique_ptr<DerivationBuilder, DerivationBuilderDeleter> makeDerivationBuild
+@@ -1805,6 +1805,25 @@ std::unique_ptr<DerivationBuilder, DerivationBuilderDeleter> makeDerivationBuild
+ 
          useSandbox = false;
      }
- 
++
 +    const auto & binfmtMiscMap = localSettings.binfmtMisc.get();
 +    auto binfmtMiscGot = binfmtMiscMap.find(params.drv.platform);
 +
